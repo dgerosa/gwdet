@@ -1,20 +1,27 @@
-import sys,os
+import sys,os,contextlib,io
 import numpy as np
 import cPickle as pickle
 import astropy.cosmology
 import scipy.stats
 import scipy.interpolate
 
-import pycbc.waveform
-import pycbc.filter
-import pycbc.psd
+@contextlib.contextmanager
+def nostdout():
+    ''' Locally suppress stoud print. See https://stackoverflow.com/a/2829036'''
+    save_stdout = sys.stdout
+    sys.stdout = io.BytesIO()
+    yield
+    sys.stdout = save_stdout
 
+with nostdout(): # pycbc prints a very annyoing new line when imported
+    import pycbc.waveform
+    import pycbc.filter
+    import pycbc.psd
 
 
 def plotting():
     from matplotlib import use #Useful when working on SSH
     use('Agg')
-
     from matplotlib import rc #Set plot defaults
     font = {'family':'serif','serif':['cmr10'],'weight' : 'medium','size' : 16}
     rc('font', **font)
@@ -24,7 +31,6 @@ def plotting():
     #matplotlib.rcParams['ytick.right'] = True
     global plt
     import matplotlib.pyplot as plt
-
 
 
 def singleton(class_):
@@ -101,7 +107,10 @@ class Pomega(object):
     def eval(cls,w):
         istance=cls()
         interpolant = istance.interpolate()
-        return interpolant(w)
+        interpolated_values = interpolant(w)
+
+        return interpolated_values# if len(interpolated_values)>1 else interpolated_values[0]
+
 
 def compare_Pw():
 
@@ -126,14 +135,11 @@ def compare_Pw():
     ax[0].legend()
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
 
-compare_Pw()
-
-sys.exit()
 
 @singleton
 class detprob(object):
 
-    def __init__(self,approximant='IMRPhenomD',psd='aLIGOZeroDetHighPower',f_lower=10.,delta_f=1./40.,snr_threshold=8.,mc1d=5,binfile='Pdetint.pkl'):
+    def __init__(self,approximant='IMRPhenomD',psd='aLIGOZeroDetHighPower',f_lower=10.,delta_f=1./40.,snr_threshold=8.,mc1d=int(1000),binfile='Pdetint.pkl',screen=False):
 
         self.approximant=approximant
         self.f_lower=f_lower
@@ -141,7 +147,9 @@ class detprob(object):
         self.psd=psd
         self.snr_threshold=snr_threshold
         self.mc1d=mc1d
-        self.bindile=binfile
+        assert isinstance(self.mc1d,(int,long))
+        self.binfile=binfile
+        self.screen=screen
 
         self._interpolate = None
 
@@ -157,12 +165,20 @@ class detprob(object):
         if not hasattr(m2_vals, "__len__"): m2_vals=[m2_vals]
         if not hasattr(z_vals, "__len__"): z_vals=[z_vals]
 
-        for m1,m2,z in zip(m1,m2,z):
-
+        snr=[]
+        for m1,m2,z in zip(m1_vals,m2_vals,z_vals):
             lum_dist = astropy.cosmology.Planck15.luminosity_distance(z).value # luminosity distance in Mpc
-            hp, hc = pycbc.waveform.get_fd_waveform(approximant=self.approximant,mass1=m1*(1.+z),mass2=m2*(1.+z),delta_f=self.delta_f,f_lower=self.f_lower,distance=lum_dist)
+            hp, hc = pycbc.waveform.get_fd_waveform(approximant=self.approximant,
+                                                    mass1=m1*(1.+z),
+                                                    mass2=m2*(1.+z),
+                                                    delta_f=self.delta_f,
+                                                    f_lower=self.f_lower,
+                                                    distance=lum_dist)
             evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.delta_f, self.f_lower)
-            snr.append( pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.f_lower)) # use hp only because I want optimally oriented sources
+            snr_one=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.f_lower)
+            if self.screen==True:
+                print("  m1="+str(m1)+" m1="+str(m2)+" z="+str(z)+" SNR="+str(snr_one))
+            snr.append(snr_one ) # use hp only because I want optimally oriented sources
 
         return np.array(snr) if len(snr)>1 else snr[0]
 
@@ -171,19 +187,9 @@ class detprob(object):
         snr = self.snr(m1,m2,z)
         return Pomega.eval(self.snr_threshold/snr)
 
-    def montecarlo_samples(self,mc1d):
-
-        m1 = np.linspace(1,100,mc1d)
-        m2 = np.linspace(1,100,mc2d)
-        z  = np.linspace(0,3,mc2d)
-
-        values = self.compute(m1,m2,z)
-
-        return m1,m2,z,values
 
 
     def interpolate(self):
-
         if self._interpolate is None:
 
             # Takes some time. Store a pickle...
@@ -191,9 +197,20 @@ class detprob(object):
 
                 print('['+self.__class__.__name__+'] Interpolating...')
 
-                m1,m2,z,values =self.montecarlo_samples(self.mc1d)
-                interpolant = scipy.interpolate.RegularGridInterpolator((m1,m2,z),values,fill_value=None)
+                # See https://stackoverflow.com/a/30059599
+                m1_grid = np.linspace(1,100,self.mc1d)
+                m2_grid = np.linspace(1,100,self.mc1d)
+                z_grid  = np.linspace(1e-4,3,self.mc1d)
 
+                points=(m1_grid,m2_grid,z_grid)
+                values = np.zeros([x.shape[0] for x in points])
+
+                for i in range(points[0].shape[0]):
+                    for j in range(points[1].shape[0]):
+                        for k in range(points[2].shape[0]):
+                            values[i,j,k] = self.compute(points[0][i], points[1][j], points[2][k])
+
+                interpolant = scipy.interpolate.RegularGridInterpolator(points=points,values=values,fill_value=None)
 
                 with open(self.binfile, 'wb') as f: pickle.dump(interpolant, f)
 
@@ -204,53 +221,23 @@ class detprob(object):
         return self._interpolate
 
     @classmethod
-    def eval(cls,w):
+    def eval(cls,m1,m2,z):
+
+        if not hasattr(m1, "__len__"): m1=[m1]
+        if not hasattr(m2, "__len__"): m2=[m2]
+        if not hasattr(z, "__len__"): z=[z]
+
         istance=cls()
         interpolant = istance.interpolate()
-        return interpolant(w)
 
+        interpolated_values = interpolant(np.transpose([m1,m2,z]))
 
+        return interpolated_values if len(interpolated_values)>1 else interpolated_values[0]
 
-
-
-
-
-
-dp=detprob()
-print dp.interpolate()
-
-
-
-
-def getSNR(m1,m2,z):
-    ''' Compute the SNR using pycbc'''
-
-    lum_dist = cosmo.luminosity_distance(z).value # luminosity distance in Mpc
-    print(z,lum_dist)
-    # get waveform
-    flow=10
-    hp, hc = pycbc.waveform.get_fd_waveform(approximant='IMRPhenomD',mass1=m1*(1.+z),mass2=m2*(1.+z),delta_f=1./40.,f_lower=flow,distance=lum_dist)
-    psd = pycbc.psd.aLIGOZeroDetHighPower(len(hp), hp.delta_f, flow)
-    snr = pycbc.filter.sigma(hp, psd=psd, low_frequency_cutoff=flow) # use hp only because I want optimally oriented sources
-
-    return snr
-
-def compute_detected_probability(snr,SNRthr=8):
-
-    pfint= Pwint() # Interpolate the peanut factor function  for all
-    #detprob= np.array([Pwfloor(SNRthr/x,pfint) for x in snr]) # Compute dection probabilities
-    detprob= Pwfloor(SNRthr/snr,pfint)# Compute dection probabilities
-
-    return detprob
-
-def add_snr_to_h5(h5filename):
-
-    f = h5py.File(h5filename)
-    snr = np.array([getSNR(m1,m2,z) for m1,m2,z in zip(f['mCB1'][:],f['mCB2'][:],f['zmerger'][:])])
-    detprob = compute_detected_probability(snr)
-    f.create_dataset('snr', data=snr)
-    f.create_dataset('detprob', data=detprob)
-    f.close()
+dp=detprob(screen=True)
+print dp.compute(10,10,0.1)
+print dp.eval(m1=10,m2=10,z=0.1)
+print dp.eval(m1=[10,10],m2=[10,10],z=[0.1,0.1])
 
 
 
