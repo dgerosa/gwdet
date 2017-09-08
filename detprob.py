@@ -59,7 +59,10 @@ def singleton(class_):
 @singleton
 class Pomega(object):
 
-    def __init__(self,mcn=int(1e8),mcbins=int(1e5),binfile='Pwint.pkl'):
+    def __init__(self,  mcn=int(1e8),
+                        mcbins=int(1e5),
+                        binfile='Pwint.pkl'):
+
         self._interpolate = None
         self.mcn = mcn
         assert isinstance(self.mcn,(int,long))
@@ -139,7 +142,14 @@ def compare_Pw():
 @singleton
 class detprob(object):
 
-    def __init__(self,approximant='IMRPhenomD',psd='aLIGOZeroDetHighPower',f_lower=10.,delta_f=1./40.,snr_threshold=8.,mc1d=int(1000),binfile='Pdetint.pkl',screen=False):
+    def __init__(self,  approximant='IMRPhenomD',
+                        psd='aLIGOZeroDetHighPower',
+                        f_lower=10.,
+                        delta_f=1./40.,
+                        snr_threshold=8.,
+                        mc1d=int(1000),
+                        binfile='Pdetint.pkl',
+                        screen=False):
 
         self.approximant=approximant
         self.f_lower=f_lower
