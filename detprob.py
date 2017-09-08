@@ -202,13 +202,12 @@ class detprob(object):
                 m2_grid = np.linspace(1,100,self.mc1d)
                 z_grid  = np.linspace(1e-4,3,self.mc1d)
 
-                points=(m1_grid,m2_grid,z_grid)
-                values = np.zeros([x.shape[0] for x in points])
+                values = np.zeros([len(m1_grid),len(m2_grid),len(z_grid)])
 
-                for i in range(points[0].shape[0]):
-                    for j in range(points[1].shape[0]):
-                        for k in range(points[2].shape[0]):
-                            values[i,j,k] = self.compute(points[0][i], points[1][j], points[2][k])
+                for i,m1 in enumerate(m1_grid):
+                    for j,m2 in enumerate(m2_grid):
+                        for k,z in enumerate(z_grid):
+                            values[i,j,k] = self.compute(m1,m2,z)
 
                 interpolant = scipy.interpolate.RegularGridInterpolator(points=points,values=values,fill_value=None)
 
