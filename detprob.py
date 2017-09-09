@@ -452,7 +452,9 @@ def compare_Psnr():
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
 
 
+
 compare_Psnr()
+
     #
     #
     # def _compute(self,data):
