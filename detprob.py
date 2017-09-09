@@ -6,7 +6,6 @@ import scipy.stats
 import scipy.interpolate
 import pathos.pools
 import multiprocessing
-import pathos.multiprocessing
 import time
 
 @contextlib.contextmanager
