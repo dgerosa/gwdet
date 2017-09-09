@@ -4,6 +4,10 @@ import cPickle as pickle
 import astropy.cosmology
 import scipy.stats
 import scipy.interpolate
+import pathos.pools
+import multiprocessing
+import pathos.multiprocessing
+import time
 
 @contextlib.contextmanager
 def nostdout():
@@ -95,7 +99,7 @@ class Pomega(object):
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
 
-                print('['+self.__class__.__name__+'] Interpolating...')
+                print('['+self.__class__.__name__+'] Interpolating Pw(w)...')
                 hist = np.histogram(self.montecarlo_samples(self.mcn),bins=self.mcbins)
                 hist_dist = scipy.stats.rv_histogram(hist)
                 with open(self.binfile, 'wb') as f: pickle.dump(hist_dist, f) #
@@ -139,6 +143,15 @@ def compare_Pw():
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
 
 
+
+
+# workaround to make a class method pickable. Works well with singletons
+# https://stackoverflow.com/a/40749513
+def snr_pickable(x): return detprob()._snr(x)
+def compute_pickable(x): return detprob()._compute(x)
+
+
+
 @singleton
 class detprob(object):
 
@@ -147,9 +160,14 @@ class detprob(object):
                         f_lower=10.,
                         delta_f=1./40.,
                         snr_threshold=8.,
-                        mc1d=int(1000),
+                        mc1d=int(200),
                         binfile='Pdetint.pkl',
-                        screen=False):
+                        screen=False,
+                        parallel=True,
+                        massmin=1.,
+                        massmax=100.,
+                        zmin=1e-4,
+                        zmax=2.2):
 
         self.approximant=approximant
         self.f_lower=f_lower
@@ -160,16 +178,16 @@ class detprob(object):
         assert isinstance(self.mc1d,(int,long))
         self.binfile=binfile
         self.screen=screen
-
+        self.parallel=parallel
         self._interpolate = None
-
-        #self.m1=m1 # Solar mass
-        #self.m2=m2 # Solar mass
-        #self.z=z   # Redshift
-        #self.lumdist = astropy.cosmology.Planck15.luminosity_distance(z).value  # Mpc
-
+        self._snrinterpolant = None
+        self.massmin=massmin
+        self.massmax=massmax
+        self.zmin=zmin
+        self.zmax=zmax
 
     def snr(self,m1_vals,m2_vals,z_vals):
+        ''' Compute the SNR from m1,m2,z '''
 
         if not hasattr(m1_vals, "__len__"): m1_vals=[m1_vals]
         if not hasattr(m2_vals, "__len__"): m2_vals=[m2_vals]
@@ -186,40 +204,186 @@ class detprob(object):
                                                     distance=lum_dist)
             evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.delta_f, self.f_lower)
             snr_one=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.f_lower)
-            if self.screen==True:
-                print("  m1="+str(m1)+" m1="+str(m2)+" z="+str(z)+" SNR="+str(snr_one))
             snr.append(snr_one ) # use hp only because I want optimally oriented sources
+            if self.screen==True:
+               print("  m1="+str(m1)+" m1="+str(m2)+" z="+str(z)+" SNR="+str(snr_one))
 
         return np.array(snr) if len(snr)>1 else snr[0]
 
+    def _snr(self,redshiftedmasses):
+        ''' Utility function '''
+
+        m1z,m2z = redshiftedmasses
+        hp, hc = pycbc.waveform.get_fd_waveform(approximant=self.approximant,
+                                                mass1=m1z,
+                                                mass2=m2z,
+                                                delta_f=self.delta_f,
+                                                f_lower=self.f_lower,
+                                                distance=1.)
+        evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.delta_f, self.f_lower)
+        snr=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.f_lower)
+        if self.screen==True:
+           print("  m1="+str(m1z)+" m1="+str(m2z)+" SNR="+str(snr))
+
+        return snr
 
     def compute(self,m1,m2,z):
+        ''' Direct evaluation of the detection probability'''
         snr = self.snr(m1,m2,z)
         return Pomega.eval(self.snr_threshold/snr)
 
+    def _compute(self,data):
+        ''' Utility function '''
+
+        m1,m2,z=data
+        ld = astropy.cosmology.Planck15.luminosity_distance(z).value
+        snrint = self.snrinterpolant()
+        snr = snrint([m1*(1+z),m2*(1+z)])/ld
+        Pw= Pomega.eval(self.snr_threshold/snr)
+
+        return Pw
+
+
+    def snrinterpolant(self):
+        ''' Build an interpolation for the SNR '''
+
+
+        if self._snrinterpolant is None:
+
+            # Takes some time. Store a pickle...
+
+            # Takes some time. Store a pickle...
+            #if not os.path.isfile('temp.pkl'):
+
+            print('['+self.__class__.__name__+'] Interpolating SNR...')
+
+            # See https://stackoverflow.com/a/30059599
+
+            m1z_grid = np.linspace(self.massmin*(1.+self.zmin),self.massmax*(1.+self.zmax),self.mc1d) # Redshifted mass 1
+            m2z_grid = np.linspace(self.massmin*(1.+self.zmin),self.massmax*(1.+self.zmax),self.mc1d) # Redshifted mass 1
+            grids=[m1z_grid,m2z_grid]
+
+            #meshgrid=np.zeros(reduce(lambda x,y:x*y, [len(x) for x in grids]))
+
+            #print(reduce(lambda x,y:x*y, [len(x) for x in grids]))
+            meshgrid=[]
+            meshcoord=[]
+            for i,m1z in enumerate(m1z_grid):
+                for j,m2z in enumerate(m2z_grid):
+                        meshcoord.append([i,j])
+                        meshgrid.append([m1z,m2z])
+            meshgrid=np.array(meshgrid)
+            meshcoord=np.array(meshcoord)
+
+
+            if self.parallel:
+
+
+                # Shuffle the arrays: https://stackoverflow.com/a/4602224/4481987
+                # Useful to better ditribute load across processors
+                if True:
+                    assert len(meshcoord)==len(meshgrid)
+                    p = np.random.permutation(len(meshcoord))
+                    meshcoord = meshcoord[p]
+                    meshgrid = meshgrid[p]
+
+                pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+                meshvalues = pool.imap(snr_pickable, meshgrid)
+                pool.close() # No more work
+                while (True):
+                    completed = meshvalues._index
+                    if (completed == len(meshgrid)): break
+                    print "   [multiprocessing] Waiting for", len(meshgrid)-completed, "tasks..."
+                    time.sleep(1)
+
+            else:
+                meshvalues = map(self._snr, meshgrid)
+
+            #print meshvalues
+
+            valuesforinterpolator = np.zeros([len(x) for x in grids])
+            for ij,val in zip(meshcoord,meshvalues):
+                i,j=ij
+                valuesforinterpolator[i,j]=val
+
+            snrinterpolant = scipy.interpolate.RegularGridInterpolator(points=grids,values=valuesforinterpolator,bounds_error=False,fill_value=None)
+
+            self._snrinterpolant = snrinterpolant
+
+            #    with open('temp.pkl', 'wb') as f: pickle.dump(snrinterpolant, f)
+
+            # with open('temp.pkl', 'rb') as f: self._snrinterpolant = pickle.load(f)
+
+
+
+        return self._snrinterpolant
 
 
     def interpolate(self):
+        ''' Build an interpolation for the detection probability as a function of m1,m2,z'''
+
         if self._interpolate is None:
 
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
 
-                print('['+self.__class__.__name__+'] Interpolating...')
+                # Make sure the SNR interpolant is available
+                dummy=self.snrinterpolant()
+                # Make sure the P(w) interpolant is available
+                dummy=Pomega.interpolate()
+
+                print('['+self.__class__.__name__+'] Interpolating Pw(SNR)...')
 
                 # See https://stackoverflow.com/a/30059599
-                m1_grid = np.linspace(1,100,self.mc1d)
-                m2_grid = np.linspace(1,100,self.mc1d)
-                z_grid  = np.linspace(1e-4,3,self.mc1d)
+                m1_grid = np.linspace(self.massmin,self.massmax,self.mc1d) # Redshifted mass 1
+                m2_grid = np.linspace(self.massmin,self.massmax,self.mc1d) # Redshifted mass 1
+                z_grid = np.linspace(self.zmin,self.zmax,self.mc1d) # Redshifted mass 1
 
-                values = np.zeros([len(m1_grid),len(m2_grid),len(z_grid)])
+                grids=[m1_grid,m2_grid,z_grid]
 
+                meshgrid=[]
+                meshcoord=[]
                 for i,m1 in enumerate(m1_grid):
                     for j,m2 in enumerate(m2_grid):
-                        for k,z in enumerate(z_grid):
-                            values[i,j,k] = self.compute(m1,m2,z)
+                            for k,z in enumerate(z_grid):
+                                #print i,j,k
+                                meshcoord.append([i,j,k])
+                                meshgrid.append([m1,m2,z])
+                meshgrid=np.array(meshgrid)
+                meshcoord=np.array(meshcoord)
 
-                interpolant = scipy.interpolate.RegularGridInterpolator(points=points,values=values,fill_value=None)
+
+                if self.parallel:
+
+                    # Shuffle the arrays: https://stackoverflow.com/a/4602224/4481987
+                    # Useful to better ditribute load across processors
+                    if True:
+                        assert len(meshcoord)==len(meshgrid)
+                        p = np.random.permutation(len(meshcoord))
+                        meshcoord = meshcoord[p]
+                        meshgrid = meshgrid[p]
+
+                    print "before"
+                    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+                    meshvalues = pool.imap(compute_pickable, meshgrid)
+                    pool.close() # No more work
+                    while (True):
+                        completed = meshvalues._index
+                        if (completed == len(meshgrid)): break
+                        print "   [multiprocessing] Waiting for", len(meshgrid)-completed, "tasks..."
+                        time.sleep(1)
+
+                else:
+                    meshvalues = map(self._compute, meshgrid)
+
+                #print meshvalues
+
+                valuesforinterpolator = np.zeros([len(x) for x in grids])
+                for ijk,val in zip(meshcoord,meshvalues):
+                    i,j,k=ijk
+                    valuesforinterpolator[i,j,k]=val
+
+                interpolant = scipy.interpolate.RegularGridInterpolator(points=grids,values=valuesforinterpolator,bounds_error=False,fill_value=None)
 
                 with open(self.binfile, 'wb') as f: pickle.dump(interpolant, f)
 
@@ -231,6 +395,7 @@ class detprob(object):
 
     @classmethod
     def eval(cls,m1,m2,z):
+        ''' Evaluate the detection probability from the interpolation'''
 
         if not hasattr(m1, "__len__"): m1=[m1]
         if not hasattr(m2, "__len__"): m2=[m2]
@@ -243,17 +408,65 @@ class detprob(object):
 
         return interpolated_values if len(interpolated_values)>1 else interpolated_values[0]
 
-dp=detprob(screen=True)
-print dp.compute(10,10,0.1)
-print dp.eval(m1=10,m2=10,z=0.1)
-print dp.eval(m1=[10,10],m2=[10,10],z=[0.1,0.1])
+
+dp=detprob(screen=False,parallel=True)
+#print dp.compute(10,10,0.1)
 
 
 
+def compare_Psnr():
+
+    plotting()
+
+    dp=detprob(screen=False,parallel=True)
+
+    computed=[]
+    interpolated=[]
+
+    n=10000
+    for i in range(n):
+        print i, n
+        m1=np.random.uniform(1,100)
+        m2=np.random.uniform(1,100)
+        z=np.random.uniform(1e-4,2.5)
+
+        computed.append(dp.compute(m1,m2,z))
+        interpolated.append(dp.eval(m1,m2,z))
+
+    computed=np.array(computed)
+    interpolated=np.array(interpolated)
+    residuals=np.abs(computed-interpolated)
+
+    residuals_notzero= residuals[np.logical_and(computed!=0,interpolated!=0)]
+
+    f, ax = plt.subplots(2)
+
+    #ax[0].hist(residuals,weights=[1./n for x in residuals],alpha=0.8,bins=100)
+    ax[0].hist(residuals_notzero,weights=[1./n for x in residuals_notzero],alpha=0.8,bins=100)
+    ax[0].axvline(np.median(residuals_notzero),ls='dashed',c='red')
+    #ax[1].hist(residuals,range=[0,0.0001],weights=[1./n for x in residuals],alpha=0.8,bins=100)
+    ax[1].hist(residuals_notzero,range=[0,0.0001],weights=[1./n for x in residuals_notzero],alpha=0.8,bins=100)
+    ax[1].axvline(np.median(residuals_notzero),ls='dashed',c='red')
+    ax[1].set_xlabel('Residuals $P_{\\rm det}$')
+
+    plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
 
 
+compare_Psnr()
+    #
+    #
+    # def _compute(self,data):
+    #     m1,m2,z=data
+    #     snrint = self.snrinterpolant()
+    #
+    #     snr=snrint([m1*(1.*z),m2*(1.+z)])/astropy.cosmology.Planck15.luminosity_distance(z).value
+    #     print "SNRS", snrint([m1*(1.*z),m1*(1.*z)]), self._snr([m1*(1.*z),m1*(1.*z)]), snr, self.snr(m1,m2,z)
+    #
+    #     Pw= Pomega.eval(self.snr_threshold/snr)
+    #
+    #     return Pw
 
-#
+
 #
 
 
