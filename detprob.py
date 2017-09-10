@@ -4,7 +4,7 @@ import cPickle as pickle
 import astropy.cosmology
 import scipy.stats
 import scipy.interpolate
-import pathos.pools
+import inspect
 import multiprocessing
 import time
 
@@ -57,21 +57,18 @@ def singleton(class_):
 
 
 
-
-
 @singleton
 class Pomega(object):
 
-    def __init__(self,  mcn=int(1e8),
-                        mcbins=int(1e5),
-                        binfile='Pwint.pkl'):
+    def __init__(self):
+                        #binfile='Pwint.pkl'):
 
         self._interpolate = None
-        self.mcn = mcn
+        self.mcn = int(1e8) # Size of monte carlo sample
         assert isinstance(self.mcn,(int,long))
-        self.mcbins = mcbins
+        self.mcbins = int(1e5) # Number of bins before interpolating
         assert isinstance(self.mcbins,(int,long))
-        self.binfile=binfile
+        #self.binfile=binfile
 
     def montecarlo_samples(self,mcn):
 
@@ -90,20 +87,19 @@ class Pomega(object):
 
         return littleomega if len(littleomega)>1 else littleomega[0]
 
-
     def interpolate(self):
 
         if self._interpolate is None:
 
             # Takes some time. Store a pickle...
-            if not os.path.isfile(self.binfile):
+            #if not os.path.isfile(self.binfile):
 
-                print('['+self.__class__.__name__+'] Interpolating Pw(w)...')
-                hist = np.histogram(self.montecarlo_samples(self.mcn),bins=self.mcbins)
-                hist_dist = scipy.stats.rv_histogram(hist)
-                with open(self.binfile, 'wb') as f: pickle.dump(hist_dist, f) #
+            print('['+self.__class__.__name__+'] Interpolating Pw(w)...')
+            hist = np.histogram(self.montecarlo_samples(self.mcn),bins=self.mcbins)
+            hist_dist = scipy.stats.rv_histogram(hist)
 
-            with open(self.binfile, 'rb') as f: hist_dist = pickle.load(f)
+            #with open(self.binfile, 'wb') as f: pickle.dump(hist_dist, f) #
+            #with open(self.binfile, 'rb') as f: hist_dist = pickle.load(f)
 
             self._interpolate = hist_dist.sf # sf give the cdf P(>w) instead of P(<w)
 
@@ -118,37 +114,10 @@ class Pomega(object):
         return interpolated_values# if len(interpolated_values)>1 else interpolated_values[0]
 
 
-def compare_Pw():
-
-    plotting()
-    # Download the file from Emanuele Berti's website if it does not exist
-    if not os.path.isfile("Pw_single.dat"):
-        import urllib
-        urllib.urlretrieve('http://www.phy.olemiss.edu/~berti/research/Pw_single.dat', "Pw_single.dat")
-
-    wEm,PwEm=np.loadtxt("Pw_single.dat",unpack=True)
-    wmy = np.linspace(-0.1,1.1,1000)
-    Pwmy=Pomega.eval(wmy)
-    f, ax = plt.subplots(2, sharex=True)
-
-    ax[0].plot(wEm,PwEm,label="Davide")
-    ax[0].plot(wmy,Pwmy,label="Emanuele")
-    Pwmy = Pomega.eval(wEm)
-    ax[1].plot(wEm,np.abs(PwEm-Pwmy),c='C2')#*2./(PwEm+Pwmy))
-    ax[1].set_xlabel('$\omega$')
-    ax[0].set_ylabel('$P(\omega)$')
-    ax[1].set_ylabel('Residuals')
-    ax[0].legend()
-    plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
-
-
-
-
-# workaround to make a class method pickable. Works well with singletons
+# Workaround to make a class method pickable. Compatbile with singletons
 # https://stackoverflow.com/a/40749513
 def snr_pickable(x): return detprob()._snr(x)
 def compute_pickable(x): return detprob()._compute(x)
-
 
 
 @singleton
@@ -156,11 +125,9 @@ class detprob(object):
 
     def __init__(self,  approximant='IMRPhenomD',
                         psd='aLIGOZeroDetHighPower',
-                        f_lower=10.,
-                        delta_f=1./40.,
-                        snr_threshold=8.,
-                        mc1d=int(200),
-                        binfile='Pdetint.pkl',
+                        flow=10.,
+                        deltaf=1./40.,
+                        snrthreshold=8.,
                         screen=False,
                         parallel=True,
                         massmin=1.,
@@ -169,21 +136,31 @@ class detprob(object):
                         zmax=2.2):
 
         self.approximant=approximant
-        self.f_lower=f_lower
-        self.delta_f=delta_f
         self.psd=psd
-        self.snr_threshold=snr_threshold
-        self.mc1d=mc1d
-        assert isinstance(self.mc1d,(int,long))
-        self.binfile=binfile
-        self.screen=screen
-        self.parallel=parallel
-        self._interpolate = None
-        self._snrinterpolant = None
+        self.flow=flow
+        self.deltaf=deltaf
+        self.snrthreshold=snrthreshold
         self.massmin=massmin
         self.massmax=massmax
         self.zmin=zmin
         self.zmax=zmax
+
+        self.binfile = 'Pw_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax']]) +'.pkl'
+
+        self.mc1d=int(200) # Size of grid where interpolation is performed
+        assert isinstance(self.mc1d,(int,long))
+        self.screen=screen
+        self.parallel=parallel
+
+
+        self._interpolate = None
+        self._snrinterpolant = None
+
+
+
+        #self.binfile='Pw_'+'_'.join([self.approximant,self.psd,self.snr_threshold])
+
+
 
     def snr(self,m1_vals,m2_vals,z_vals):
         ''' Compute the SNR from m1,m2,z '''
@@ -198,11 +175,11 @@ class detprob(object):
             hp, hc = pycbc.waveform.get_fd_waveform(approximant=self.approximant,
                                                     mass1=m1*(1.+z),
                                                     mass2=m2*(1.+z),
-                                                    delta_f=self.delta_f,
-                                                    f_lower=self.f_lower,
+                                                    delta_f=self.deltaf,
+                                                    f_lower=self.flow,
                                                     distance=lum_dist)
-            evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.delta_f, self.f_lower)
-            snr_one=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.f_lower)
+            evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
+            snr_one=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.flow)
             snr.append(snr_one ) # use hp only because I want optimally oriented sources
             if self.screen==True:
                print("  m1="+str(m1)+" m1="+str(m2)+" z="+str(z)+" SNR="+str(snr_one))
@@ -216,20 +193,24 @@ class detprob(object):
         hp, hc = pycbc.waveform.get_fd_waveform(approximant=self.approximant,
                                                 mass1=m1z,
                                                 mass2=m2z,
-                                                delta_f=self.delta_f,
-                                                f_lower=self.f_lower,
+                                                delta_f=self.deltaf,
+                                                f_lower=self.flow,
                                                 distance=1.)
-        evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.delta_f, self.f_lower)
-        snr=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.f_lower)
+        evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
+        snr=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.flow)
         if self.screen==True:
            print("  m1="+str(m1z)+" m1="+str(m2z)+" SNR="+str(snr))
 
         return snr
 
-    def compute(self,m1,m2,z):
+
+    @classmethod
+    def compute(cls,m1,m2,z):
         ''' Direct evaluation of the detection probability'''
-        snr = self.snr(m1,m2,z)
-        return Pomega.eval(self.snr_threshold/snr)
+
+        istance=cls()
+        snr = istance.snr(m1,m2,z)
+        return Pomega.eval(istance.snrthreshold/snr)
 
     def _compute(self,data):
         ''' Utility function '''
@@ -238,7 +219,7 @@ class detprob(object):
         ld = astropy.cosmology.Planck15.luminosity_distance(z).value
         snrint = self.snrinterpolant()
         snr = snrint([m1*(1+z),m2*(1+z)])/ld
-        Pw= Pomega.eval(self.snr_threshold/snr)
+        Pw= Pomega.eval(self.snrthreshold/snr)
 
         return Pw
 
@@ -325,11 +306,12 @@ class detprob(object):
 
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
+                print('['+self.__class__.__name__+'] Storing: '+self.binfile)
 
                 # Make sure the SNR interpolant is available
                 dummy=self.snrinterpolant()
                 # Make sure the P(w) interpolant is available
-                dummy=Pomega.interpolate()
+                dummy=Pomega.eval(0)
 
                 print('['+self.__class__.__name__+'] Interpolating Pw(SNR)...')
 
@@ -362,7 +344,6 @@ class detprob(object):
                         meshcoord = meshcoord[p]
                         meshgrid = meshgrid[p]
 
-                    print "before"
                     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
                     meshvalues = pool.imap(compute_pickable, meshgrid)
                     pool.close() # No more work
@@ -407,30 +388,59 @@ class detprob(object):
 
         return interpolated_values if len(interpolated_values)>1 else interpolated_values[0]
 
+def pdet(m1,m2,z):
+    return detprob.eval(m1,m2,z)
 
-dp=detprob(screen=False,parallel=True)
+#dp=detprob(screen=False,parallel=True)
 #print dp.compute(10,10,0.1)
 
+
+
+#ciao=detprob.compute(10,10,0.1)
+
+
+def compare_Pw():
+
+    plotting()
+    # Download the file from Emanuele Berti's website if it does not exist
+    if not os.path.isfile("Pw_single.dat"):
+        import urllib
+        urllib.urlretrieve('http://www.phy.olemiss.edu/~berti/research/Pw_single.dat', "Pw_single.dat")
+
+    wEm,PwEm=np.loadtxt("Pw_single.dat",unpack=True)
+    wmy = np.linspace(-0.1,1.1,1000)
+    Pwmy=Pomega.eval(wmy)
+    f, ax = plt.subplots(2, sharex=True)
+
+    ax[0].plot(wEm,PwEm,label="Davide")
+    ax[0].plot(wmy,Pwmy,label="Emanuele")
+    Pwmy = Pomega.eval(wEm)
+    ax[1].plot(wEm,np.abs(PwEm-Pwmy),c='C2')#*2./(PwEm+Pwmy))
+    ax[1].set_xlabel('$\omega$')
+    ax[0].set_ylabel('$P(\omega)$')
+    ax[1].set_ylabel('Residuals')
+    ax[0].legend()
+    plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
 
 
 def compare_Psnr():
 
     plotting()
 
-    dp=detprob(screen=False,parallel=True)
+    #dp=detprob(screen=False,parallel=True)
 
     computed=[]
     interpolated=[]
 
     n=10000
-    for i in range(n):
-        print i, n
-        m1=np.random.uniform(1,100)
-        m2=np.random.uniform(1,100)
-        z=np.random.uniform(1e-4,2.5)
 
-        computed.append(dp.compute(m1,m2,z))
-        interpolated.append(dp.eval(m1,m2,z))
+
+    m1=np.random.uniform(1,100,n)
+    m2=np.random.uniform(1,100,n)
+    z=np.random.uniform(1e-4,2.5,n)
+
+    computed=detprob.compute(m1,m2,z)
+    interpolated=detprob.eval(m1,m2,z)
 
     computed=np.array(computed)
     interpolated=np.array(interpolated)
