@@ -1,12 +1,18 @@
-import sys,os,contextlib,io
-import numpy as np
+import sys
+import os
+import contextlib
+import io
+import urllib
+import time
+import warnings
 import cPickle as pickle
+import multiprocessing
+
+import numpy as np
 import astropy.cosmology
 import scipy.stats
 import scipy.interpolate
-import inspect
-import multiprocessing
-import time
+import pathos.multiprocessing
 
 @contextlib.contextmanager
 def nostdout():
@@ -17,15 +23,20 @@ def nostdout():
     sys.stdout = save_stdout
 
 with nostdout(): # pycbc prints a very annyoing new line when imported
-    import pycbc.waveform
-    import pycbc.filter
-    import pycbc.psd
-
+    try:
+        import pycbc.waveform
+        import pycbc.filter
+        import pycbc.psd
+        has_pycbc=True
+    except:
+        warnings.warn("Can't import pycbc",ImportWarning)
+        has_pycbc=False
 
 directory = os.path.splitext(__file__)[0]+'_data'
 
 
 def plotting():
+    ''' Import stuff for plotting'''
     from matplotlib import use #Useful when working on SSH
     use('Agg')
     from matplotlib import rc #Set plot defaults
@@ -127,9 +138,10 @@ class detectability(object):
                         directory=directory,
                         binfile=None,
                         binfilepdet=None,
-                        mc1d=int(10),   #int(200),
+                        mc1d=int(200),
                         mcn=int(1e8),
-                        mcbins=int(1e5)
+                        mcbins=int(1e5),
+                        has_pycbc=has_pycbc
                         ):
 
         self.approximant=approximant
@@ -148,10 +160,14 @@ class detectability(object):
         if binfile is None:
             binfile = 'Pw_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
         self.binfile=directory+'/'+binfile
+        #self.tempfile=directory+'/temp.pkl'
 
         # Flags
         self.screen=screen
         self.parallel=parallel
+        if self.parallel and not os.path.isfile(self.binfile): # See https://stackoverflow.com/a/29030149/4481987
+            self.map = pathos.multiprocessing.ProcessingPool(multiprocessing.cpu_count()).imap
+        self.has_pycbc=has_pycbc
 
         # Parameters for pdet
         self.mcn = mcn
@@ -178,6 +194,8 @@ class detectability(object):
         snr=[]
         for m1,m2,z in zip(m1_vals,m2_vals,z_vals):
             lum_dist = astropy.cosmology.Planck15.luminosity_distance(z).value # luminosity distance in Mpc
+
+            assert self.has_pycbc, "pycbc is needed"
             hp, hc = pycbc.waveform.get_fd_waveform(approximant=self.approximant,
                                                     mass1=m1*(1.+z),
                                                     mass2=m2*(1.+z),
@@ -196,6 +214,7 @@ class detectability(object):
         ''' Utility function '''
 
         m1z,m2z = redshiftedmasses
+
         hp, hc = pycbc.waveform.get_fd_waveform(approximant=self.approximant,
                                                 mass1=m1z,
                                                 mass2=m2z,
@@ -223,7 +242,7 @@ class detectability(object):
         ld = astropy.cosmology.Planck15.luminosity_distance(z).value
         snrint = self.snrinterpolant()
         snr = snrint([m1*(1+z),m2*(1+z)])/ld
-        Pw= self.pdetproj.eval(self.snrthreshold/snr)
+        Pw= self.pdetproj().eval(self.snrthreshold/snr)
 
         return Pw
 
@@ -233,10 +252,13 @@ class detectability(object):
 
         if self._snrinterpolant is None:
 
+            assert self.has_pycbc, 'pycbc is needed'
+
             # Takes some time. Store a pickle...
 
             # Takes some time. Store a pickle...
-            if not os.path.isfile(directory+'/temp.pkl'):
+            #if not os.path.isfile(self.tempfile):
+
 
             print('['+self.__class__.__name__+'] Interpolating SNR...')
 
@@ -270,14 +292,21 @@ class detectability(object):
                     meshcoord = meshcoord[p]
                     meshgrid = meshgrid[p]
 
-                pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-                meshvalues = pool.imap(snr_pickable, meshgrid)
-                pool.close() # No more work
+                #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+                #meshvalues = pool.imap(snr_pickable, meshgrid)
+                #pool.close() # No more work
+
+                #meshvalues = pool.imap(self._snr, meshgrid)
+
+                meshvalues= self.map(self._snr, meshgrid)
                 while (True):
                     completed = meshvalues._index
                     if (completed == len(meshgrid)): break
                     print "   [multiprocessing] Waiting for", len(meshgrid)-completed, "tasks..."
                     time.sleep(1)
+
+                #pool.close()
+                #pool.join()
 
             else:
                 meshvalues = map(self._snr, meshgrid)
@@ -293,10 +322,9 @@ class detectability(object):
 
             self._snrinterpolant = snrinterpolant
 
-            #    with open('temp.pkl', 'wb') as f: pickle.dump(snrinterpolant, f)
+            #    with open(self.tempfile, 'wb') as f: pickle.dump(snrinterpolant, f)
 
-            # with open('temp.pkl', 'rb') as f: self._snrinterpolant = pickle.load(f)
-
+            #with open(self.tempfile, 'rb') as f: self._snrinterpolant = pickle.load(f)
 
 
         return self._snrinterpolant
@@ -306,11 +334,13 @@ class detectability(object):
         ''' Build an interpolation for the detection probability as a function of m1,m2,z'''
 
         if self._interpolate is None:
+            assert self.has_pycbc, "pycbc is needed"
 
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
                 if not os.path.exists(self.directory):
                     os.makedirs(self.directory)
+
 
                 print('['+self.__class__.__name__+'] Storing: '+self.binfile)
 
@@ -349,19 +379,29 @@ class detectability(object):
                         meshcoord = meshcoord[p]
                         meshgrid = meshgrid[p]
 
-                    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-                    meshvalues = pool.imap(compute_pickable, meshgrid)
-                    pool.close() # No more work
+                    #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+                    #meshvalues = pool.imap(compute_pickable, meshgrid)
+                    #pool.close() # No more work
+
+                    #pool2 = pathos.multiprocessing.ProcessingPool(multiprocessing.cpu_count())
+                    #meshvalues = pool2.imap(self._compute, meshgrid)
+                    #pool2.close()
+
+                    meshvalues= self.map(self._compute, meshgrid)
+
+
+
                     while (True):
                         completed = meshvalues._index
                         if (completed == len(meshgrid)): break
                         print "   [multiprocessing] Waiting for", len(meshgrid)-completed, "tasks..."
                         time.sleep(1)
+                    #pool.close()
 
                 else:
                     meshvalues = map(self._compute, meshgrid)
 
-                #print meshvalues
+                print meshvalues
 
                 valuesforinterpolator = np.zeros([len(x) for x in grids])
                 for ijk,val in zip(meshcoord,meshvalues):
@@ -405,21 +445,23 @@ class detectability(object):
 
 
 def compare_Pw():
+    ''' Compare performance of the pdet interpolator against public data from Emanuele Berti's website'''
 
-    plotting()
-    # Download the file from Emanuele Berti's website if it does not exist
+    plotting()# Initialized plotting stuff
+
+    # Download file from Emanuele Berti's website if it does not exist
     if not os.path.isfile("Pw_single.dat"):
-        import urllib
         urllib.urlretrieve('http://www.phy.olemiss.edu/~berti/research/Pw_single.dat', "Pw_single.dat")
 
     wEm,PwEm=np.loadtxt("Pw_single.dat",unpack=True)
     wmy = np.linspace(-0.1,1.1,1000)
-    Pwmy=pdet.eval(wmy)
+    p=pdet()
+    Pwmy=p(wmy)
     f, ax = plt.subplots(2, sharex=True)
 
-    ax[0].plot(wEm,PwEm,label="Davide")
-    ax[0].plot(wmy,Pwmy,label="Emanuele")
-    Pwmy = pdet.eval(wEm)
+    ax[0].plot(wEm,PwEm,label="public data")
+    ax[0].plot(wmy,Pwmy,ls='dashed',label="this code")
+    Pwmy = p(wEm)
     ax[1].plot(wEm,np.abs(PwEm-Pwmy),c='C2')#*2./(PwEm+Pwmy))
     ax[1].set_xlabel('$\omega$')
     ax[0].set_ylabel('$P(\omega)$')
@@ -430,7 +472,7 @@ def compare_Pw():
 
 def compare_Psnr():
 
-    plotting()
+    plotting() # Initialized plotting stuff
 
     #dp=detprob(screen=False,parallel=True)
 
@@ -468,10 +510,11 @@ def compare_Psnr():
 
 #p= pdet()
 #print(p(0.5))
+#
+#p = detectability(parallel=True)
+#print(p(10,10,0.1))
 
-p = detectability()
-print(p(10,10,0.1))
-
+compare_Pw()
 
 #compare_Psnr()
 
