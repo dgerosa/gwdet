@@ -22,6 +22,9 @@ with nostdout(): # pycbc prints a very annyoing new line when imported
     import pycbc.psd
 
 
+directory = os.path.splitext(__file__)[0]+'_data'
+
+
 def plotting():
     from matplotlib import use #Useful when working on SSH
     use('Agg')
@@ -36,39 +39,24 @@ def plotting():
     import matplotlib.pyplot as plt
 
 
-def singleton(class_):
-    ''' Implement singleton design pattern in python.
-    See https://stackoverflow.com/a/6810621 '''
+class pdet(object):
 
-    class class_w(class_):
-        _instance = None
-        def __new__(class2, *args, **kwargs):
-            if class_w._instance is None:
-                class_w._instance = super(class_w, class2).__new__(class2, *args, **kwargs)
-                class_w._instance._sealed = False
-            return class_w._instance
-        def __init__(self, *args, **kwargs):
-            if self._sealed:
-                return
-            super(class_w, self).__init__(*args, **kwargs)
-            self._sealed = True
-    class_w.__name__ = class_.__name__
-    return class_w
-
-
-
-@singleton
-class Pomega(object):
-
-    def __init__(self):
-                        #binfile='Pwint.pkl'):
+    def __init__(self,  directory=directory,
+                        binfile=None,
+                        mcn=int(1e8),
+                        mcbins=int(1e5)):
 
         self._interpolate = None
-        self.mcn = int(1e8) # Size of monte carlo sample
+        self.mcn = mcn # Size of monte carlo sample
         assert isinstance(self.mcn,(int,long))
-        self.mcbins = int(1e5) # Number of bins before interpolating
+        self.mcbins = mcbins # Number of bins before interpolating
         assert isinstance(self.mcbins,(int,long))
-        #self.binfile=binfile
+
+        self.directory=directory
+        if binfile is None:
+            binfile = 'pdet_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
+        self.binfile=directory+'/'+binfile
+
 
     def montecarlo_samples(self,mcn):
 
@@ -92,36 +80,38 @@ class Pomega(object):
         if self._interpolate is None:
 
             # Takes some time. Store a pickle...
-            #if not os.path.isfile(self.binfile):
+            if not os.path.isfile(self.binfile):
+                if not os.path.exists(self.directory):
+                    os.makedirs(self.directory)
+                print('['+self.__class__.__name__+'] Storing: '+self.binfile)
 
-            print('['+self.__class__.__name__+'] Interpolating Pw(w)...')
-            hist = np.histogram(self.montecarlo_samples(self.mcn),bins=self.mcbins)
-            hist_dist = scipy.stats.rv_histogram(hist)
+                print('['+self.__class__.__name__+'] Interpolating Pw(w)...')
+                hist = np.histogram(self.montecarlo_samples(self.mcn),bins=self.mcbins)
+                hist_dist = scipy.stats.rv_histogram(hist)
 
-            #with open(self.binfile, 'wb') as f: pickle.dump(hist_dist, f) #
-            #with open(self.binfile, 'rb') as f: hist_dist = pickle.load(f)
+                with open(self.binfile, 'wb') as f: pickle.dump(hist_dist, f) #
+            with open(self.binfile, 'rb') as f: hist_dist = pickle.load(f)
 
             self._interpolate = hist_dist.sf # sf give the cdf P(>w) instead of P(<w)
 
         return self._interpolate
 
-    @classmethod
-    def eval(cls,w):
-        istance=cls()
-        interpolant = istance.interpolate()
+    def eval(self,w):
+        interpolant = self.interpolate()
         interpolated_values = interpolant(w)
 
         return interpolated_values# if len(interpolated_values)>1 else interpolated_values[0]
 
+    def __call__(self,w):
+        return self.eval(w)
+
 
 # Workaround to make a class method pickable. Compatbile with singletons
 # https://stackoverflow.com/a/40749513
-def snr_pickable(x): return detprob()._snr(x)
-def compute_pickable(x): return detprob()._compute(x)
+def snr_pickable(x): return detectability()._snr(x)
+def compute_pickable(x): return detectability()._compute(x)
 
-
-@singleton
-class detprob(object):
+class detectability(object):
 
     def __init__(self,  approximant='IMRPhenomD',
                         psd='aLIGOZeroDetHighPower',
@@ -133,7 +123,14 @@ class detprob(object):
                         massmin=1.,
                         massmax=100.,
                         zmin=1e-4,
-                        zmax=2.2):
+                        zmax=2.2,
+                        directory=directory,
+                        binfile=None,
+                        binfilepdet=None,
+                        mc1d=int(10),   #int(200),
+                        mcn=int(1e8),
+                        mcbins=int(1e5)
+                        ):
 
         self.approximant=approximant
         self.psd=psd
@@ -144,23 +141,32 @@ class detprob(object):
         self.massmax=massmax
         self.zmin=zmin
         self.zmax=zmax
-
-        self.binfile = 'Pw_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax']]) +'.pkl'
-
-        self.mc1d=int(200) # Size of grid where interpolation is performed
+        self.mc1d=mc1d # Size of grid where interpolation is performed
         assert isinstance(self.mc1d,(int,long))
+
+        self.directory=directory
+        if binfile is None:
+            binfile = 'Pw_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
+        self.binfile=directory+'/'+binfile
+
+        # Flags
         self.screen=screen
         self.parallel=parallel
 
+        # Parameters for pdet
+        self.mcn = mcn
+        self.mcbins = mcbins
+        self.binfilepdet=binfilepdet
 
+        # Lazy loading
         self._interpolate = None
         self._snrinterpolant = None
+        self._pdetproj = None
 
-
-
-        #self.binfile='Pw_'+'_'.join([self.approximant,self.psd,self.snr_threshold])
-
-
+    def pdetproj(self):
+        if self._pdetproj is None:
+            self._pdetproj = pdet(directory=directory,binfile=self.binfilepdet,mcn=self.mcn,mcbins=self.mcbins)
+        return self._pdetproj
 
     def snr(self,m1_vals,m2_vals,z_vals):
         ''' Compute the SNR from m1,m2,z '''
@@ -203,14 +209,12 @@ class detprob(object):
 
         return snr
 
-
-    @classmethod
     def compute(cls,m1,m2,z):
         ''' Direct evaluation of the detection probability'''
 
         istance=cls()
         snr = istance.snr(m1,m2,z)
-        return Pomega.eval(istance.snrthreshold/snr)
+        return self.pdetproj.eval(istance.snrthreshold/snr)
 
     def _compute(self,data):
         ''' Utility function '''
@@ -219,10 +223,9 @@ class detprob(object):
         ld = astropy.cosmology.Planck15.luminosity_distance(z).value
         snrint = self.snrinterpolant()
         snr = snrint([m1*(1+z),m2*(1+z)])/ld
-        Pw= Pomega.eval(self.snrthreshold/snr)
+        Pw= self.pdetproj.eval(self.snrthreshold/snr)
 
         return Pw
-
 
     def snrinterpolant(self):
         ''' Build an interpolation for the SNR '''
@@ -233,7 +236,7 @@ class detprob(object):
             # Takes some time. Store a pickle...
 
             # Takes some time. Store a pickle...
-            #if not os.path.isfile('temp.pkl'):
+            if not os.path.isfile(directory+'/temp.pkl'):
 
             print('['+self.__class__.__name__+'] Interpolating SNR...')
 
@@ -306,12 +309,15 @@ class detprob(object):
 
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
+                if not os.path.exists(self.directory):
+                    os.makedirs(self.directory)
+
                 print('['+self.__class__.__name__+'] Storing: '+self.binfile)
 
                 # Make sure the SNR interpolant is available
                 dummy=self.snrinterpolant()
                 # Make sure the P(w) interpolant is available
-                dummy=Pomega.eval(0)
+                dummy = self.pdetproj()(0.5)
 
                 print('['+self.__class__.__name__+'] Interpolating Pw(SNR)...')
 
@@ -332,7 +338,6 @@ class detprob(object):
                                 meshgrid.append([m1,m2,z])
                 meshgrid=np.array(meshgrid)
                 meshcoord=np.array(meshcoord)
-
 
                 if self.parallel:
 
@@ -373,23 +378,23 @@ class detprob(object):
 
         return self._interpolate
 
-    @classmethod
-    def eval(cls,m1,m2,z):
+
+    def eval(self,m1,m2,z):
         ''' Evaluate the detection probability from the interpolation'''
 
         if not hasattr(m1, "__len__"): m1=[m1]
         if not hasattr(m2, "__len__"): m2=[m2]
         if not hasattr(z, "__len__"): z=[z]
 
-        istance=cls()
-        interpolant = istance.interpolate()
+        interpolant = self.interpolate()
 
         interpolated_values = interpolant(np.transpose([m1,m2,z]))
 
         return interpolated_values if len(interpolated_values)>1 else interpolated_values[0]
 
-def pdet(m1,m2,z):
-    return detprob.eval(m1,m2,z)
+    def __call__(self,m1,m2,z):
+        return self.eval(m1,m2,z)
+
 
 #dp=detprob(screen=False,parallel=True)
 #print dp.compute(10,10,0.1)
@@ -409,12 +414,12 @@ def compare_Pw():
 
     wEm,PwEm=np.loadtxt("Pw_single.dat",unpack=True)
     wmy = np.linspace(-0.1,1.1,1000)
-    Pwmy=Pomega.eval(wmy)
+    Pwmy=pdet.eval(wmy)
     f, ax = plt.subplots(2, sharex=True)
 
     ax[0].plot(wEm,PwEm,label="Davide")
     ax[0].plot(wmy,Pwmy,label="Emanuele")
-    Pwmy = Pomega.eval(wEm)
+    Pwmy = pdet.eval(wEm)
     ax[1].plot(wEm,np.abs(PwEm-Pwmy),c='C2')#*2./(PwEm+Pwmy))
     ax[1].set_xlabel('$\omega$')
     ax[0].set_ylabel('$P(\omega)$')
@@ -440,7 +445,7 @@ def compare_Psnr():
     z=np.random.uniform(1e-4,2.5,n)
 
     computed=detprob.compute(m1,m2,z)
-    interpolated=detprob.eval(m1,m2,z)
+    interpolated=detprobk.eval(m1,m2,z)
 
     computed=np.array(computed)
     interpolated=np.array(interpolated)
@@ -461,8 +466,14 @@ def compare_Psnr():
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
 
 
+#p= pdet()
+#print(p(0.5))
 
-compare_Psnr()
+p = detectability()
+print(p(10,10,0.1))
+
+
+#compare_Psnr()
 
     #
     #
