@@ -119,8 +119,8 @@ class pdet(object):
 
 # Workaround to make a class method pickable. Compatbile with singletons
 # https://stackoverflow.com/a/40749513
-def snr_pickable(x): return detectability()._snr(x)
-def compute_pickable(x): return detectability()._compute(x)
+#def snr_pickable(x): return detectability()._snr(x)
+#def compute_pickable(x): return detectability()._compute(x)
 
 class detectability(object):
 
@@ -165,7 +165,8 @@ class detectability(object):
         # Flags
         self.screen=screen
         self.parallel=parallel
-        if self.parallel and not os.path.isfile(self.binfile): # See https://stackoverflow.com/a/29030149/4481987
+        # Initialize a pool to run parallel jobs. See https://stackoverflow.com/a/29030149/4481987
+        if self.parallel and not os.path.isfile(self.binfile):
             self.map = pathos.multiprocessing.ProcessingPool(multiprocessing.cpu_count()).imap
         self.has_pycbc=has_pycbc
 
@@ -180,6 +181,8 @@ class detectability(object):
         self._pdetproj = None
 
     def pdetproj(self):
+        ''' A single instance of the pdet class'''
+
         if self._pdetproj is None:
             self._pdetproj = pdet(directory=directory,binfile=self.binfilepdet,mcn=self.mcn,mcbins=self.mcbins)
         return self._pdetproj
@@ -211,7 +214,7 @@ class detectability(object):
         return np.array(snr) if len(snr)>1 else snr[0]
 
     def _snr(self,redshiftedmasses):
-        ''' Utility function '''
+        ''' Utility method '''
 
         m1z,m2z = redshiftedmasses
 
@@ -228,15 +231,14 @@ class detectability(object):
 
         return snr
 
-    def compute(cls,m1,m2,z):
+    def compute(m1,m2,z):
         ''' Direct evaluation of the detection probability'''
 
-        istance=cls()
-        snr = istance.snr(m1,m2,z)
-        return self.pdetproj.eval(istance.snrthreshold/snr)
+        snr = self.snr(m1,m2,z)
+        return self.pdetproj().eval(istance.snrthreshold/snr)
 
     def _compute(self,data):
-        ''' Utility function '''
+        ''' Utility method '''
 
         m1,m2,z=data
         ld = astropy.cosmology.Planck15.luminosity_distance(z).value
@@ -433,6 +435,8 @@ class detectability(object):
         return interpolated_values if len(interpolated_values)>1 else interpolated_values[0]
 
     def __call__(self,m1,m2,z):
+        '''Utility method'''
+
         return self.eval(m1,m2,z)
 
 
