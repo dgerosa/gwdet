@@ -1,3 +1,13 @@
+''' gwdet: detectability of gravitational-wave signals from compact binary coalescences
+    PUT GITHUB LINK HERE!
+'''
+
+__author__ = "Davide Gerosa"
+__license__ = "MIT"
+__version__ = "0.0.1"
+__email__ = "dgerosa@caltech.edu"
+
+from __future__ import print_function,division
 import sys
 import os
 import contextlib
@@ -13,6 +23,8 @@ import astropy.cosmology
 import scipy.stats
 import scipy.interpolate
 import pathos.multiprocessing
+
+this_module='gwdet'
 
 @contextlib.contextmanager
 def nostdout():
@@ -32,11 +44,9 @@ with nostdout(): # pycbc prints a very annyoing new line when imported
         warnings.warn("Can't import pycbc",ImportWarning)
         has_pycbc=False
 
-directory = os.path.splitext(__file__)[0]+'_data'
-
-
 def plotting():
     ''' Import stuff for plotting'''
+
     from matplotlib import use #Useful when working on SSH
     use('Agg')
     from matplotlib import rc #Set plot defaults
@@ -50,12 +60,49 @@ def plotting():
     import matplotlib.pyplot as plt
 
 
-class pdet(object):
+# Defaults values
+defaults={  'directory' : this_module+'_data',
+            'mcn' : int(1e8),
+            'mcbins' : int(1e5),
+            'approximant' : 'IMRPhenomD',
+            'psd' : 'aLIGOZeroDetHighPower',
+            'flow' : 10.,
+            'deltaf' : 1./40.,
+            'snrthreshold': 8.,
+            'massmin' : 1.,
+            'massmax' : 100.,
+            'zmin' : 1e-4,
+            'zmax' : 2.2,
+            'mc1d' : int(200)}
 
-    def __init__(self,  directory=directory,
+def download_defaults():
+    print "TODO"
+
+
+class averageangles(object):
+    '''
+    Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016
+
+    Usage:
+        p=averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1e5))
+        p(w) # with 0<=w<=1
+
+    Parameters:
+        directory: where checkpoints are stored
+        binfile: checkpoint file (if None computed from other kwargs)
+        mcn: resolution parameter (number of Monte Carlo samples)
+        mcbins: resolution parameter (number of interpolated bins)
+        w: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
+
+    Returns:
+        p(w): GW detectability (float or array)
+    '''
+
+
+    def __init__(self,  directory=defaults['directory'],
                         binfile=None,
-                        mcn=int(1e8),
-                        mcbins=int(1e5)):
+                        mcn=defaults['mcn'],
+                        mcbins=defaults['mcbins']):
 
         self._interpolate = None
         self.mcn = mcn # Size of monte carlo sample
@@ -65,11 +112,14 @@ class pdet(object):
 
         self.directory=directory
         if binfile is None:
-            binfile = 'pdet_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
+            binfile = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
         self.binfile=directory+'/'+binfile
 
+        # True if all values are the default ones
+        self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['mcn','mcbins']])
 
     def montecarlo_samples(self,mcn):
+        ''' Sample the w parameters over the various angles'''
 
         # Sample the angles according to their pdf
         theta=np.arccos(np.random.uniform(-1,1,mcn))   # Polar
@@ -87,6 +137,7 @@ class pdet(object):
         return littleomega if len(littleomega)>1 else littleomega[0]
 
     def interpolate(self):
+        ''' Compute interpolation. If available, read from file'''
 
         if self._interpolate is None:
 
@@ -94,6 +145,10 @@ class pdet(object):
             if not os.path.isfile(self.binfile):
                 if not os.path.exists(self.directory):
                     os.makedirs(self.directory)
+
+                    if self.is_default:
+                        print('['+this_module+'] Using defaults values. You can download this interpolant. See....')
+
                 print('['+self.__class__.__name__+'] Storing: '+self.binfile)
 
                 print('['+self.__class__.__name__+'] Interpolating Pw(w)...')
@@ -108,12 +163,16 @@ class pdet(object):
         return self._interpolate
 
     def eval(self,w):
+        ''' Evaluate the interpolant'''
+
         interpolant = self.interpolate()
         interpolated_values = interpolant(w)
 
         return interpolated_values# if len(interpolated_values)>1 else interpolated_values[0]
 
     def __call__(self,w):
+        ''' Evaluate the interpolant'''
+
         return self.eval(w)
 
 
@@ -123,24 +182,49 @@ class pdet(object):
 #def compute_pickable(x): return detectability()._compute(x)
 
 class detectability(object):
+    '''
+    Compute the detection probability of a non-spinning compact binary. We follow the notation of arxiv:1405.7016.
 
-    def __init__(self,  approximant='IMRPhenomD',
-                        psd='aLIGOZeroDetHighPower',
-                        flow=10.,
-                        deltaf=1./40.,
-                        snrthreshold=8.,
+    Usage:
+        p=detectability('directory'='gwdet_data', binfile=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200)
+        p(m1,m2,m2)
+
+    Parameters:
+        directory: where checkpoints are stored
+        binfile: checkpoint file (if None computed from other kwargs)
+        approximant: waveform appriximant used to compute SNRs. Available list: pycbc.waveform.waveform.print_fd_approximants()
+        psd: poswer spectral density used to compute SNRs. Available list: pycbc.psd.analytical.get_lalsim_psd_list()
+        flow: starting freqiency in SNR calculations
+        deltaf: resolution parameter (frequency sampling)
+        snrthreshold: minimum detectable signal
+        massmin,massax: limits on the component masses in Msun. Interpolated inside, extrapolated outside
+        zmin,zmax: limits on the redshift. Interpolated inside, extrapolated outside
+        mc1d: resolution parameter (number of grid point per dimension)
+        m1: component mass in Msun (can be float or array)
+        m2: component mass in Msun (can be float or array)
+        z: redshift (can be float or array)
+
+    Returns:
+        p(m1,m2,z): GW detectability (float or array)
+    '''
+
+    def __init__(self,  approximant=defaults['approximant'],
+                        psd=defaults['psd'],
+                        flow=defaults['flow'],
+                        deltaf=defaults['deltaf'],
+                        snrthreshold=defaults['snrthreshold'],
                         screen=False,
                         parallel=True,
-                        massmin=1.,
-                        massmax=100.,
-                        zmin=1e-4,
-                        zmax=2.2,
-                        directory=directory,
+                        massmin=defaults['massmin'],
+                        massmax=defaults['massmax'],
+                        zmin=defaults['zmin'],
+                        zmax=defaults['zmax'],
+                        directory=defaults['directory'],
                         binfile=None,
                         binfilepdet=None,
-                        mc1d=int(200),
-                        mcn=int(1e8),
-                        mcbins=int(1e5),
+                        mc1d=defaults['mc1d'],
+                        mcn=defaults['mcn'],
+                        mcbins=defaults['mcbins'],
                         has_pycbc=has_pycbc
                         ):
 
@@ -158,7 +242,7 @@ class detectability(object):
 
         self.directory=directory
         if binfile is None:
-            binfile = 'Pw_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
+            binfile = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
         self.binfile=directory+'/'+binfile
         #self.tempfile=directory+'/temp.pkl'
 
@@ -180,11 +264,14 @@ class detectability(object):
         self._snrinterpolant = None
         self._pdetproj = None
 
+        # True if all values are the default ones
+        self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']])
+
     def pdetproj(self):
         ''' A single instance of the pdet class'''
 
         if self._pdetproj is None:
-            self._pdetproj = pdet(directory=directory,binfile=self.binfilepdet,mcn=self.mcn,mcbins=self.mcbins)
+            self._pdetproj = averageangles(directory=directory,binfile=self.binfilepdet,mcn=self.mcn,mcbins=self.mcbins)
         return self._pdetproj
 
     def snr(self,m1_vals,m2_vals,z_vals):
@@ -282,9 +369,7 @@ class detectability(object):
             meshgrid=np.array(meshgrid)
             meshcoord=np.array(meshcoord)
 
-
             if self.parallel:
-
 
                 # Shuffle the arrays: https://stackoverflow.com/a/4602224/4481987
                 # Useful to better ditribute load across processors
@@ -297,14 +382,13 @@ class detectability(object):
                 #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
                 #meshvalues = pool.imap(snr_pickable, meshgrid)
                 #pool.close() # No more work
-
                 #meshvalues = pool.imap(self._snr, meshgrid)
 
                 meshvalues= self.map(self._snr, meshgrid)
                 while (True):
                     completed = meshvalues._index
                     if (completed == len(meshgrid)): break
-                    print "   [multiprocessing] Waiting for", len(meshgrid)-completed, "tasks..."
+                    print('   [multiprocessing] Waiting for', len(meshgrid)-completed, 'tasks...')
                     time.sleep(1)
 
                 #pool.close()
@@ -328,7 +412,6 @@ class detectability(object):
 
             #with open(self.tempfile, 'rb') as f: self._snrinterpolant = pickle.load(f)
 
-
         return self._snrinterpolant
 
 
@@ -336,19 +419,21 @@ class detectability(object):
         ''' Build an interpolation for the detection probability as a function of m1,m2,z'''
 
         if self._interpolate is None:
-            assert self.has_pycbc, "pycbc is needed"
 
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
                 if not os.path.exists(self.directory):
                     os.makedirs(self.directory)
 
+                if self.is_default:
+                    print('['+this_module+'] Using defaults values. You can download this interpolant. See....')
+
+                assert self.has_pycbc, "pycbc is needed"
 
                 print('['+self.__class__.__name__+'] Storing: '+self.binfile)
 
-                # Make sure the SNR interpolant is available
+                # Make sure the other interpolants are available
                 dummy=self.snrinterpolant()
-                # Make sure the P(w) interpolant is available
                 dummy = self.pdetproj()(0.5)
 
                 print('['+self.__class__.__name__+'] Interpolating Pw(SNR)...')
@@ -396,14 +481,13 @@ class detectability(object):
                     while (True):
                         completed = meshvalues._index
                         if (completed == len(meshgrid)): break
-                        print "   [multiprocessing] Waiting for", len(meshgrid)-completed, "tasks..."
+                        print('   [multiprocessing] Waiting for', len(meshgrid)-completed, 'tasks...')
                         time.sleep(1)
                     #pool.close()
 
                 else:
                     meshvalues = map(self._compute, meshgrid)
 
-                print meshvalues
 
                 valuesforinterpolator = np.zeros([len(x) for x in grids])
                 for ijk,val in zip(meshcoord,meshvalues):
@@ -422,8 +506,7 @@ class detectability(object):
 
 
     def eval(self,m1,m2,z):
-        ''' Evaluate the detection probability from the interpolation'''
-
+'       '' Evaluate the interpolant'''
         if not hasattr(m1, "__len__"): m1=[m1]
         if not hasattr(m2, "__len__"): m2=[m2]
         if not hasattr(z, "__len__"): z=[z]
@@ -435,21 +518,13 @@ class detectability(object):
         return interpolated_values if len(interpolated_values)>1 else interpolated_values[0]
 
     def __call__(self,m1,m2,z):
-        '''Utility method'''
+        ''' Evaluate the interpolant'''
 
         return self.eval(m1,m2,z)
 
 
-#dp=detprob(screen=False,parallel=True)
-#print dp.compute(10,10,0.1)
-
-
-
-#ciao=detprob.compute(10,10,0.1)
-
-
 def compare_Pw():
-    ''' Compare performance of the pdet interpolator against public data from Emanuele Berti's website'''
+    ''' Compare performance of the averageangles interpolator against public data from Emanuele Berti's website'''
 
     plotting()# Initialized plotting stuff
 
@@ -459,7 +534,7 @@ def compare_Pw():
 
     wEm,PwEm=np.loadtxt("Pw_single.dat",unpack=True)
     wmy = np.linspace(-0.1,1.1,1000)
-    p=pdet()
+    p=averageangles()
     Pwmy=p(wmy)
     f, ax = plt.subplots(2, sharex=True)
 
@@ -475,23 +550,23 @@ def compare_Pw():
 
 
 def compare_Psnr():
+    ''' Evaluate performace of the detectability interpolator against raw SNRs calculations '''
+
 
     plotting() # Initialized plotting stuff
 
     #dp=detprob(screen=False,parallel=True)
-
     computed=[]
     interpolated=[]
 
     n=10000
-
 
     m1=np.random.uniform(1,100,n)
     m2=np.random.uniform(1,100,n)
     z=np.random.uniform(1e-4,2.5,n)
 
     computed=detprob.compute(m1,m2,z)
-    interpolated=detprobk.eval(m1,m2,z)
+    interpolated=detprob.eval(m1,m2,z)
 
     computed=np.array(computed)
     interpolated=np.array(interpolated)
@@ -510,70 +585,3 @@ def compare_Psnr():
     ax[1].set_xlabel('Residuals $P_{\\rm det}$')
 
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
-
-
-#p= pdet()
-#print(p(0.5))
-#
-#p = detectability(parallel=True)
-#print(p(10,10,0.1))
-
-compare_Pw()
-
-#compare_Psnr()
-
-    #
-    #
-    # def _compute(self,data):
-    #     m1,m2,z=data
-    #     snrint = self.snrinterpolant()
-    #
-    #     snr=snrint([m1*(1.*z),m2*(1.+z)])/astropy.cosmology.Planck15.luminosity_distance(z).value
-    #     print "SNRS", snrint([m1*(1.*z),m1*(1.*z)]), self._snr([m1*(1.*z),m1*(1.*z)]), snr, self.snr(m1,m2,z)
-    #
-    #     Pw= Pomega.eval(self.snr_threshold/snr)
-    #
-    #     return Pw
-
-
-#
-
-
-#
-#
-#
-# def compute_my_detprob():
-#
-#
-#
-#
-# def Pwfloor(w,interp):
-#     '''Return 0 if SNR is below treshold.'''
-#     if w>=1. :
-#         return 0.
-#     elif w<=0. :
-#         return 1.
-#     else:
-#         return float(interp(w))
-#
-#
-# def getSNR(m1,m2,z):
-#     ''' Compute the SNR using pycbc'''
-#
-#     lum_dist = cosmo.luminosity_distance(z).value # luminosity distance in Mpc
-#     print(z,lum_dist)
-#     # get waveform
-#     flow=10
-#     hp, hc = pycbc.waveform.get_fd_waveform(approximant='IMRPhenomD',mass1=m1*(1.+z),mass2=m2*(1.+z),delta_f=1./40.,f_lower=flow,distance=lum_dist)
-#     psd = pycbc.psd.aLIGOZeroDetHighPower(len(hp), hp.delta_f, flow)
-#     snr = pycbc.filter.sigma(hp, psd=psd, low_frequency_cutoff=flow) # use hp only because I want optimally oriented sources
-#
-#     return snr
-#
-# def compute_detected_probability(snr,SNRthr=8):
-#
-#     pfint= Pwint() # Interpolate the peanut factor function  for all
-#     #detprob= np.array([Pwfloor(SNRthr/x,pfint) for x in snr]) # Compute dection probabilities
-#     detprob= Pwfloor(SNRthr/snr,pfint)# Compute dection probabilities
-#
-#     return detprob
