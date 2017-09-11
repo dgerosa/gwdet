@@ -1,11 +1,7 @@
-''' gwdet: detectability of gravitational-wave signals from compact binary coalescences
-    PUT GITHUB LINK HERE!
 '''
-
-__author__ = "Davide Gerosa"
-__license__ = "MIT"
-__version__ = "0.0.1"
-__email__ = "dgerosa@caltech.edu"
+gwdet: detectability of gravitational-wave signals from compact binary coalescences
+PUT GITHUB LINK HERE!
+'''
 
 from __future__ import print_function,division
 import sys
@@ -24,6 +20,11 @@ import scipy.stats
 import scipy.interpolate
 import pathos.multiprocessing
 
+
+__author__ = "Davide Gerosa"
+__license__ = "MIT"
+__version__ = "0.0.1"
+__email__ = "dgerosa@caltech.edu"
 this_module='gwdet'
 
 @contextlib.contextmanager
@@ -75,8 +76,8 @@ defaults={  'directory' : this_module+'_data',
             'zmax' : 2.2,
             'mc1d' : int(200)}
 
-def download_defaults():
-    print "TODO"
+#def download_defaults():
+#    print"TODO"
 
 
 class averageangles(object):
@@ -155,7 +156,7 @@ class averageangles(object):
                 hist = np.histogram(self.montecarlo_samples(self.mcn),bins=self.mcbins)
                 hist_dist = scipy.stats.rv_histogram(hist)
 
-                with open(self.binfile, 'wb') as f: pickle.dump(hist_dist, f) #
+                with open(self.binfile, 'wb') as f: pickle.dump(hist_dist, f)
             with open(self.binfile, 'rb') as f: hist_dist = pickle.load(f)
 
             self._interpolate = hist_dist.sf # sf give the cdf P(>w) instead of P(<w)
@@ -506,7 +507,8 @@ class detectability(object):
 
 
     def eval(self,m1,m2,z):
-'       '' Evaluate the interpolant'''
+        ''' Evaluate the interpolant'''
+
         if not hasattr(m1, "__len__"): m1=[m1]
         if not hasattr(m2, "__len__"): m2=[m2]
         if not hasattr(z, "__len__"): z=[z]
@@ -522,6 +524,8 @@ class detectability(object):
 
         return self.eval(m1,m2,z)
 
+
+print(__file__)
 
 def compare_Pw():
     ''' Compare performance of the averageangles interpolator against public data from Emanuele Berti's website'''
