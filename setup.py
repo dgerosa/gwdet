@@ -7,6 +7,7 @@ to be sure docstrings and readme are up-to-date. Then
     python setup.py sdist upload
 '''
 
+import os
 from setuptools import setup
 
 # Long description from readme

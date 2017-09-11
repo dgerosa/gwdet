@@ -13,6 +13,7 @@ import time
 import warnings
 import cPickle as pickle
 import multiprocessing
+import requests
 
 import numpy as np
 import astropy.cosmology
@@ -60,9 +61,40 @@ def plotting():
     global plt
     import matplotlib.pyplot as plt
 
+def download_defaults(id, destination):
+    ''' Download a file from google drive. See https://stackoverflow.com/a/39225039'''
+
+    def get_confirm_token(response):
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                return value
+
+        return None
+
+    def save_response_content(response, destination):
+        CHUNK_SIZE = 32768
+
+        with open(destination, "wb") as f:
+            for chunk in response.iter_content(CHUNK_SIZE):
+                if chunk: # filter out keep-alive new chunks
+                    f.write(chunk)
+
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+
+    response = session.get(URL, params = { 'id' : id }, stream = True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = { 'id' : id, 'confirm' : token }
+        response = session.get(URL, params = params, stream = True)
+
+    save_response_content(response, destination)
+
 
 # Defaults values
-defaults={  'directory' : this_module+'_data',
+defaults={  'directory' : os.path.dirname(__file__),
             'mcn' : int(1e8),
             'mcbins' : int(1e5),
             'approximant' : 'IMRPhenomD',
@@ -76,8 +108,7 @@ defaults={  'directory' : this_module+'_data',
             'zmax' : 2.2,
             'mc1d' : int(200)}
 
-#def download_defaults():
-#    print"TODO"
+
 
 
 class averageangles(object):
@@ -114,10 +145,17 @@ class averageangles(object):
         self.directory=directory
         if binfile is None:
             binfile = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
-        self.binfile=directory+'/'+binfile
+        if self.directory!='':
+            self.binfile=directory+'/'+binfile
+        else:
+            self.binfile=binfile
 
         # True if all values are the default ones
         self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['mcn','mcbins']])
+
+        if self.is_default:
+            self.default_id = '0B79Q_824AhxsUGlEYkRKZmJOczg'
+            # https://drive.google.com/file/d/0B79Q_824AhxsUGlEYkRKZmJOczg/view?usp=sharing
 
     def montecarlo_samples(self,mcn):
         ''' Sample the w parameters over the various angles'''
@@ -144,15 +182,16 @@ class averageangles(object):
 
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
-                if not os.path.exists(self.directory):
+                if not os.path.exists(self.directory) and self.directory!='':
                     os.makedirs(self.directory)
 
-                    if self.is_default:
-                        print('['+this_module+'] Using defaults values. You can download this interpolant. See....')
+                if self.is_default:
+                    print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:')
+                    print('\t gwdet.download_defaults(\''+self.default_id+'\',\''+self.binfile+'\')\n')
 
-                print('['+self.__class__.__name__+'] Storing: '+self.binfile)
+                print('['+this_module+'] Storing: '+self.binfile)
 
-                print('['+self.__class__.__name__+'] Interpolating Pw(w)...')
+                print('['+this_module+'] Interpolating Pw(w)...')
                 hist = np.histogram(self.montecarlo_samples(self.mcn),bins=self.mcbins)
                 hist_dist = scipy.stats.rv_histogram(hist)
 
@@ -187,7 +226,7 @@ class detectability(object):
     Compute the detection probability of a non-spinning compact binary. We follow the notation of arxiv:1405.7016.
 
     Usage:
-        p=detectability('directory'='gwdet_data', binfile=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200)
+        p=detectability('directory'='gwdet_data', binfile=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), parallel=True, screen=False)
         p(m1,m2,m2)
 
     Parameters:
@@ -201,6 +240,8 @@ class detectability(object):
         massmin,massax: limits on the component masses in Msun. Interpolated inside, extrapolated outside
         zmin,zmax: limits on the redshift. Interpolated inside, extrapolated outside
         mc1d: resolution parameter (number of grid point per dimension)
+        parallel: use parallel runs on all CPUs available
+        screen: debug option, prints all SNRs computed
         m1: component mass in Msun (can be float or array)
         m2: component mass in Msun (can be float or array)
         z: redshift (can be float or array)
@@ -244,7 +285,11 @@ class detectability(object):
         self.directory=directory
         if binfile is None:
             binfile = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
-        self.binfile=directory+'/'+binfile
+        if self.directory!='':
+            self.binfile=directory+'/'+binfile
+        else:
+            self.binfile=binfile
+
         #self.tempfile=directory+'/temp.pkl'
 
         # Flags
@@ -267,6 +312,10 @@ class detectability(object):
 
         # True if all values are the default ones
         self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']])
+
+        if self.is_default:
+            self.default_id = '0B79Q_824AhxsdTA3REN6OVVjNWM'
+            # https://drive.google.com/file/d/0B79Q_824AhxsdTA3REN6OVVjNWM/view?usp=sharing
 
     def pdetproj(self):
         ''' A single instance of the pdet class'''
@@ -350,7 +399,7 @@ class detectability(object):
             #if not os.path.isfile(self.tempfile):
 
 
-            print('['+self.__class__.__name__+'] Interpolating SNR...')
+            print('['+this_module+'] Interpolating SNR...')
 
             # See https://stackoverflow.com/a/30059599
 
@@ -423,21 +472,22 @@ class detectability(object):
 
             # Takes some time. Store a pickle...
             if not os.path.isfile(self.binfile):
-                if not os.path.exists(self.directory):
+                if not os.path.exists(self.directory) and self.directory!='':
                     os.makedirs(self.directory)
 
                 if self.is_default:
-                    print('['+this_module+'] Using defaults values. You can download this interpolant. See....')
+                    print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:')
+                    print('\t gwdet.download_defaults(\''+self.default_id+'\',\''+self.binfile+'\')\n')
 
                 assert self.has_pycbc, "pycbc is needed"
 
-                print('['+self.__class__.__name__+'] Storing: '+self.binfile)
+                print('['+this_module+'] Storing: '+self.binfile)
 
                 # Make sure the other interpolants are available
                 dummy=self.snrinterpolant()
                 dummy = self.pdetproj()(0.5)
 
-                print('['+self.__class__.__name__+'] Interpolating Pw(SNR)...')
+                print('['+this_module+'] Interpolating Pw(SNR)...')
 
                 # See https://stackoverflow.com/a/30059599
                 m1_grid = np.linspace(self.massmin,self.massmax,self.mc1d) # Redshifted mass 1
@@ -525,8 +575,6 @@ class detectability(object):
         return self.eval(m1,m2,z)
 
 
-print(__file__)
-
 def compare_Pw():
     ''' Compare performance of the averageangles interpolator against public data from Emanuele Berti's website'''
 
@@ -589,3 +637,9 @@ def compare_Psnr():
     ax[1].set_xlabel('Residuals $P_{\\rm det}$')
 
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
+
+#
+# p=averageangles()
+# print(p(0.5))
+# p=detectability()
+# print(p(10,10,0.1))
