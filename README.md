@@ -62,7 +62,10 @@ print(p(m1,m2,z))  # Fraction of detectabile sources
 Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. 
 
 ```
-p = averageangles(directory=os.path.dirname(__file__), binfile=None, mcn=int(1e8), mcbins=int(1e5))
+p = averageangles(  directory=os.path.dirname(__file__), 
+                    binfile=None, 
+                    mcn=int(1e8), 
+                    mcbins=int(1e5) )
 
 det = p(w) # with 0<=w<=1
 ```
@@ -86,7 +89,23 @@ det = p(w) # with 0<=w<=1
 ​    Compute the detection probability of a non-spinning compact binary.
 
 ```
-p = detectability('directory'=os.path.dirname(__file__), binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
+p = detectability(  directory=os.path.dirname(__file__), 
+                    binfile=None, 
+                    binfilepdet=None,
+                    approximant='IMRPhenomD',
+                    psd='aLIGOZeroDetHighPower',
+                    flow=10.,
+                    deltaf=1./40.,
+                    snrthreshold=8.,
+                    massmin=1.,
+                    massmax=100.,
+                    zmin=1e-4,
+                    zmax=2.2,
+                    mc1d=int(200),
+                    mcn=int(1e8),
+                    mcbins=int(1e5), 
+                    parallel=True,
+                    screen=False)
 
 det = p(m1,m2,z)
 ```
