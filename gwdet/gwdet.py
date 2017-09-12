@@ -556,7 +556,7 @@ def compare_Pw():
     Pwmy = p(wEm)
     ax[1].plot(wEm,np.abs(PwEm-Pwmy),c='C2')#*2./(PwEm+Pwmy))
     ax[1].set_xlabel('$\omega$')
-    ax[0].set_ylabel('$P(\omega)$')
+    ax[0].set_ylabel('$P(>\omega)$')
     ax[1].set_ylabel('Residuals')
     ax[0].legend()
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
@@ -567,7 +567,6 @@ def compare_Psnr():
 
     plotting() # Initialized plotting stuff
 
-    #dp=detprob(screen=False,parallel=True)
     computed=[]
     interpolated=[]
 

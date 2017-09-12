@@ -2,7 +2,7 @@
 
 This is a short python module to compute the probability of detecting a gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
 
-The detectability function is defined by Finn and Chernoff in [arxiv:9301003](https://arxiv.org/abs/gr-qc/9301003) as a function of the projection parameter *Theta* (their Eq. 3.31). Here however, we follow the notation of Dominik+ in [arxiv:1405.7016](https://arxiv.org/abs/1405.7016), which defined *w= Theta/4* such that *0<=w<=1*. We are interested in the cumilative distribution *P(>w)* of the projection parameter *w* (see their Eq. A.1). This gives the probabilty that an elliptically polarized gravitational-wave signal (like that of a binary) will be detected taking into account the antenna pattern of the detector and the inclination of the source (here we consider a single detector,  even if in the real world we deal with networks...)
+The detectability function is defined by Finn and Chernoff in [arxiv:9301003](https://arxiv.org/abs/gr-qc/9301003) as a function of the projection parameter *Theta* (their Eq. 3.31). Here however, we follow the notation of Dominik+ in [arxiv:1405.7016](https://arxiv.org/abs/1405.7016), which defined *w= Theta/4* such that *0<=w<=1*. We are interested in the cumulative distribution *P(>w)* of the projection parameter *w* (see their Eq. A.1). This gives the probabilty that an elliptically polarized gravitational-wave signal (like that of a binary) will be detected taking into account the antenna pattern of the detector and the inclination of the source (here we consider a single detector,  even if in the real world we deal with networks...)
 
 For a given (non-spinning) compact binary with masses m1 and m2 at redshift z, you first need to compute its signal-to-noise ratio *snr_opt* assuming optimal orientation and location  (i.e. the source is face on, overhead the detector). Then specify a threshold, say 8, above which you consider the signal detectable. The probabilty that a specific binary will be detected is just *P(w=8/snr_opt)*.
 
@@ -35,7 +35,7 @@ This code has two classes only, `averageangles` and `detectability`. You first n
 
 The default usage is
 
-```p = 
+```
 p=gwdet.averageangles()
 w=0.5 # Projection parameter
 print(p(w)) # Fraction of detectabile sources
@@ -118,7 +118,7 @@ gwdet.compare_Pw()
 
 
 
-![compare_pw](https://user-images.githubusercontent.com/7237041/30337388-fbd830f6-979c-11e7-9c20-9fde063c9f5e.png)
+![compare_pw](https://user-images.githubusercontent.com/7237041/30345791-54f23092-97bb-11e7-8327-1a6531a1437a.png)
 
 Seconly, I compare the perfomance of the P(m1,m2,z) interpolator of `detectability` against 1000 bruce force SNR computations from `lal`. Altough occasional mismathces of 3% are found, the median residuals are as small as ~1e-5. This plot can be generated with
 
