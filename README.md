@@ -115,7 +115,6 @@ The code is developed and maintained by [Davide Gerosa](https://github.com/dgero
 
 ```
 dgerosa@caltech.edu
-
 ```
 
 I am happy to help you out!
