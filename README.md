@@ -4,7 +4,7 @@ This is a short python module to compute the detectability of gravitational-wave
 
 Right now, it can only handle non-spinning systems, will be generalized to spins eventually (any help is welcome!).
 
-
+This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016:
 
 ## Installation and checkpoints
 
@@ -41,7 +41,7 @@ This code has two classes only, `averageangles` and `detectability`. You need to
 
 ### averageangles
 
-Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016:
+Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. 
 
 ```
 p = averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1e5))
@@ -69,7 +69,7 @@ det = p(w) # with 0<=w<=1
 
 ### detectability
 
-​    Compute the detection probability of a non-spinning compact binary. We follow the notation of arxiv:1405.7016.
+​    Compute the detection probability of a non-spinning compact binary.
 
 ```
 p = detectability('directory'='gwdet_data', binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
