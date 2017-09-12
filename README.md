@@ -77,7 +77,7 @@ p(m1,m2,m2)
 - ```psd`: power spectral density used to compute SNRs. Available list: `pycbc.psd.analytical.get_lalsim_psd_list()`
 - flow`: starting freqiency in SNR calculations`
 - deltaf`: resolution parameter (frequency sampling)`
-- snrthreshold`: minimum detectable signal`
+- `snrthreshold`: minimum detectable signal
 - `massmin`,`massax`: limits on the component masses in Msun. Interpolated inside, extrapolated outside
 - `zmin`,`zmax`: limits on the redshift. Interpolated inside, extrapolated outside
 - `mc1d`: resolution parameter (number of grid point per dimension)
