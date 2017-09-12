@@ -4,7 +4,11 @@ This is a short python module to compute the detectability of gravitational-wave
 
 Right now, it can only handle non-spinning systems, will be generalized to spins eventually (any help is welcome!).
 
-This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016:
+The detectability function is defined by Finn and Chernoff in [arxiv:9301003](https://arxiv.org/abs/gr-qc/9301003) as a function of the projection parameter *Theta* (their Eq. 3.31). Here however, we follow the notation of Dominik+ i n [arxiv:1405.7016](https://arxiv.org/abs/1405.7016), which used the projection parameter *w= Theta/4* (such that *0<=w<=1*). The detectability function is the cumilative distribution *P(>w)* of the projection parameter *w* (see their Eq. A.). Basically this gives the probabilty that an elliptically polarized gravitational-wave signal (like that of a binary) will be detected taking into account the antenna pattern of the detector and the inclination of the source. Here we consider a single detector, but note that in the real world we deal with networks. 
+
+If you have a (non-spinning) binary with masses m1 and m2 at redshift z, you first need to compute its signal-to-noise ratio assuming optimal orientation and location *snr_opt* (i.e. the source is face-on, overhead the detector). Then, specify a threshold, say 8, above which you consider the signal detectable. The probabilty that a specific binary will be detected is just *P(w=8/snr_opt)*.
+
+
 
 ## Installation and checkpoints
 
@@ -20,18 +24,10 @@ If you limit yourself to the default values, I provide some checkpoints files wh
 
 ```
 [gwdet] You are using defaults values. You can download this interpolant. Use:
-    gwdet.download_defaults(.....)
+    curl ....
 ```
 
-To download the checkpoints, just execute that line in a python interpreter:
-
-```
-python
->>>> import gwdet
->>>> gwdet.download_defaults(.....)
-```
-
-The two checkpoint files are currently ~5MB and ~200MB respectively.
+To download the checkpoints, just execute that whole command starting with `curl`.  The two checkpoint files are currently ~1MB and ~50MB respectively. 
 
 
 
@@ -104,7 +100,26 @@ det = p(m1,m2,z)
 
 ## Cheks and performance
 
+Here I first compare the performance of the P(w) interpolator implemented in `averageangles` against public data from [Emanuele Berti's website](http://www.phy.olemiss.edu/~berti/research/). The agreement is excellent and the residuals are just numerical noise. This plot can be generated with
+
+```
+gwdet.compare_Pw()
+```
+
+
+
 ![compare_pw](https://user-images.githubusercontent.com/7237041/30337388-fbd830f6-979c-11e7-9c20-9fde063c9f5e.png)
+
+Seconly, I compare the perfomance of the P(m1,m2,z) interpolator of `detectability` against 1000 bruce force SNR computations from `lal`. Altough occasional mismathces of 3% are found, the median residuals are as small as ~1e-5. This plot can be generated with
+
+```
+gwdet.compare_Psnr()
+```
+
+
+
+![compare_psnr](https://user-images.githubusercontent.com/7237041/30341935-c3bd36e8-97ac-11e7-947d-ac06dae3bedb.png)
+
 
 
 ## Credits
