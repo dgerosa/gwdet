@@ -1,5 +1,5 @@
 # gwdet
-##### Detectability of gravitational-wave signals from compact binary coalescences
+#### Detectability of gravitational-wave signals from compact binary coalescences
 
 This is a short python module to compute the detectability of gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
 
