@@ -13,8 +13,8 @@ import time
 import warnings
 import cPickle as pickle
 import multiprocessing
-import requests
 
+import requests
 import numpy as np
 import astropy.cosmology
 import scipy.stats
@@ -24,7 +24,7 @@ import pathos.multiprocessing
 
 __author__ = "Davide Gerosa"
 __license__ = "MIT"
-__version__ = "0.0.1"
+__version__ = "0.1"
 __email__ = "dgerosa@caltech.edu"
 this_module='gwdet'
 
@@ -61,38 +61,6 @@ def plotting():
     global plt
     import matplotlib.pyplot as plt
 
-def download_defaults(id, destination):
-    ''' Download a file from google drive. See https://stackoverflow.com/a/39225039'''
-
-    def get_confirm_token(response):
-        for key, value in response.cookies.items():
-            if key.startswith('download_warning'):
-                return value
-
-        return None
-
-    def save_response_content(response, destination):
-        CHUNK_SIZE = 32768
-
-        with open(destination, "wb") as f:
-            for chunk in response.iter_content(CHUNK_SIZE):
-                if chunk: # filter out keep-alive new chunks
-                    f.write(chunk)
-
-    URL = "https://docs.google.com/uc?export=download"
-
-    session = requests.Session()
-
-    response = session.get(URL, params = { 'id' : id }, stream = True)
-    token = get_confirm_token(response)
-
-    if token:
-        params = { 'id' : id, 'confirm' : token }
-        response = session.get(URL, params = params, stream = True)
-
-    save_response_content(response, destination)
-
-
 # Defaults values
 defaults={  'directory' : os.path.dirname(__file__),
             'mcn' : int(1e8),
@@ -116,8 +84,8 @@ class averageangles(object):
     Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016
 
     Usage:
-        p=averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1e5))
-        p(w) # with 0<=w<=1
+        p = averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1e5))
+        det = p(w) # with 0<=w<=1
 
     Parameters:
         directory: where checkpoints are stored
@@ -127,7 +95,7 @@ class averageangles(object):
         w: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
 
     Returns:
-        p(w): GW detectability (float or array)
+        det: GW detectability (float or array)
     '''
 
 
@@ -144,11 +112,10 @@ class averageangles(object):
 
         self.directory=directory
         if binfile is None:
-            binfile = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
-        if self.directory!='':
-            self.binfile=directory+'/'+binfile
-        else:
-            self.binfile=binfile
+            self.binfileonly = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
+        if self.directory=='':
+            self.directory='.'
+        self.binfile=self.directory+'/'+self.binfileonly
 
         # True if all values are the default ones
         self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['mcn','mcbins']])
@@ -186,8 +153,8 @@ class averageangles(object):
                     os.makedirs(self.directory)
 
                 if self.is_default:
-                    print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:')
-                    print('\t gwdet.download_defaults(\''+self.default_id+'\',\''+self.binfile+'\')\n')
+                    print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:\n')
+                    print('curl https://raw.githubusercontent.com/dgerosa/try/master/checkpoints/'+self.binfileonly+'.tar.gz -o '+self.binfile+'.tar.gz; tar -xzvf '+self.binfile+'.tar.gz -C '+self.directory+'; rm '+self.binfile+'.tar.gz \n')
 
                 print('['+this_module+'] Storing: '+self.binfile)
 
@@ -226,20 +193,23 @@ class detectability(object):
     Compute the detection probability of a non-spinning compact binary. We follow the notation of arxiv:1405.7016.
 
     Usage:
-        p=detectability('directory'='gwdet_data', binfile=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), parallel=True, screen=False)
-        p(m1,m2,m2)
+        p = detectability('directory'='gwdet_data', binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
+        det = p(m1,m2,z)
 
     Parameters:
         directory: where checkpoints are stored
         binfile: checkpoint file (if None computed from other kwargs)
+        binfilepdet: checkpoint file (if None computed from other kwargs)
         approximant: waveform appriximant used to compute SNRs. Available list: pycbc.waveform.waveform.print_fd_approximants()
-        psd: poswer spectral density used to compute SNRs. Available list: pycbc.psd.analytical.get_lalsim_psd_list()
+        psd: power spectral density used to compute SNRs. Available list: pycbc.psd.analytical.get_lalsim_psd_list()
         flow: starting freqiency in SNR calculations
         deltaf: resolution parameter (frequency sampling)
         snrthreshold: minimum detectable signal
         massmin,massax: limits on the component masses in Msun. Interpolated inside, extrapolated outside
         zmin,zmax: limits on the redshift. Interpolated inside, extrapolated outside
         mc1d: resolution parameter (number of grid point per dimension)
+        mcn: resolution parameter (number of Monte Carlo samples)
+        mcbins: resolution parameter (number of interpolated bins)
         parallel: use parallel runs on all CPUs available
         screen: debug option, prints all SNRs computed
         m1: component mass in Msun (can be float or array)
@@ -247,7 +217,7 @@ class detectability(object):
         z: redshift (can be float or array)
 
     Returns:
-        p(m1,m2,z): GW detectability (float or array)
+        det: GW detectability (float or array)
     '''
 
     def __init__(self,  approximant=defaults['approximant'],
@@ -284,11 +254,10 @@ class detectability(object):
 
         self.directory=directory
         if binfile is None:
-            binfile = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
-        if self.directory!='':
-            self.binfile=directory+'/'+binfile
-        else:
-            self.binfile=binfile
+            self.binfileonly = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
+        if self.directory=='':
+            self.directory='.'
+        self.binfile=self.directory+'/'+self.binfileonly
 
         #self.tempfile=directory+'/temp.pkl'
 
@@ -313,15 +282,11 @@ class detectability(object):
         # True if all values are the default ones
         self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']])
 
-        if self.is_default:
-            self.default_id = '0B79Q_824AhxsdTA3REN6OVVjNWM'
-            # https://drive.google.com/file/d/0B79Q_824AhxsdTA3REN6OVVjNWM/view?usp=sharing
-
     def pdetproj(self):
         ''' A single instance of the pdet class'''
 
         if self._pdetproj is None:
-            self._pdetproj = averageangles(directory=directory,binfile=self.binfilepdet,mcn=self.mcn,mcbins=self.mcbins)
+            self._pdetproj = averageangles(directory=self.directory,binfile=self.binfilepdet,mcn=self.mcn,mcbins=self.mcbins)
         return self._pdetproj
 
     def snr(self,m1_vals,m2_vals,z_vals):
@@ -368,11 +333,11 @@ class detectability(object):
 
         return snr
 
-    def compute(m1,m2,z):
+    def compute(self,m1,m2,z):
         ''' Direct evaluation of the detection probability'''
 
         snr = self.snr(m1,m2,z)
-        return self.pdetproj().eval(istance.snrthreshold/snr)
+        return self.pdetproj().eval(self.snrthreshold/snr)
 
     def _compute(self,data):
         ''' Utility method '''
@@ -476,8 +441,8 @@ class detectability(object):
                     os.makedirs(self.directory)
 
                 if self.is_default:
-                    print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:')
-                    print('\t gwdet.download_defaults(\''+self.default_id+'\',\''+self.binfile+'\')\n')
+                    print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:\n')
+                    print('curl https://raw.githubusercontent.com/dgerosa/try/master/checkpoints/'+self.binfileonly+'.tar.gz -o '+self.binfile+'.tar.gz; tar -xzvf '+self.binfile+'.tar.gz -C '+self.directory+'; rm '+self.binfile+'.tar.gz \n')
 
                 assert self.has_pycbc, "pycbc is needed"
 
@@ -604,21 +569,21 @@ def compare_Pw():
 def compare_Psnr():
     ''' Evaluate performace of the detectability interpolator against raw SNRs calculations '''
 
-
     plotting() # Initialized plotting stuff
 
     #dp=detprob(screen=False,parallel=True)
     computed=[]
     interpolated=[]
 
-    n=10000
+    n=1000
 
     m1=np.random.uniform(1,100,n)
     m2=np.random.uniform(1,100,n)
     z=np.random.uniform(1e-4,2.5,n)
 
-    computed=detprob.compute(m1,m2,z)
-    interpolated=detprob.eval(m1,m2,z)
+    p=detectability()
+    computed=p.compute(m1,m2,z)
+    interpolated=p(m1,m2,z)
 
     computed=np.array(computed)
     interpolated=np.array(interpolated)
@@ -637,9 +602,3 @@ def compare_Psnr():
     ax[1].set_xlabel('Residuals $P_{\\rm det}$')
 
     plt.savefig(sys._getframe().f_code.co_name+".pdf",bbox_inches='tight')
-
-#
-# p=averageangles()
-# print(p(0.5))
-# p=detectability()
-# print(p(10,10,0.1))
