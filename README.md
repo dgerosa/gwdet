@@ -3,6 +3,10 @@
 
 This is a short python module to compute the detectability of gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
 
+Right now, it can only handle non-spinning systems, will be generalized to spins eventually (any help is welcome!).
+
+
+
 ## Installation and checkpoints
 
 You can install this using pip
@@ -11,22 +15,24 @@ You can install this using pip
 pip install gwdet
 ~~~
 
-Dependancies include `numpy`, `scipy`,`matplotlib`,`astropy` and `pathos`, which can all be installed with pip (and will be installed automatically if not present). The LIGO software `lal` and `pycbc` are needed to use this code with values other than the default ones (see [here](https://davidegerosa.com/installlal/) for a short guide). 
+Dependancies include `numpy`, `scipy`,`matplotlib`,`astropy` and `pathos`, which can all be installed with pip (and will be installed automatically if not present). The LIGO software `lal` and `pycbc` are needed to use this code with values other than the default ones (see [here](https://davidegerosa.com/installlal/) for a short guide I wrote). 
 
-If you limit yourself to the default values, I provide some checkpoints files which let you use the code without installing any LIGO software. In any case, even if you have `lal`, dowloading these checkpoints will save you a lot of computational time. When you use the code with defaults parameters for the first time, a message like the following will be printed:
+If you limit yourself to the default values, I provide some checkpoints files which let you use the code without installing any LIGO software. In any case, even if you have `lal`, dowloading these checkpoints will save you a lot of computational time. When you use the code with defaults parameters for the first time, a message like the following will be printed out:
 
 ~~~bash
 [gwdet] You are using defaults values. You can download this interpolant. Use:
     gwdet.download_defaults(.....)
 ~~~
 
-To download the checkpoints just execute that line in a python interpreter:
+To download the checkpoints, just execute that line in a python interpreter:
 
 ~~~~bash
 python
 >>>> import gwdet
 >>>> gwdet.download_defaults(.....)
 ~~~~
+
+The two checkpoint files are currently ~5MB and ~200MB respectively.
 
 
 
@@ -97,3 +103,19 @@ p(m1,m2,m2)
 
 - `p(m1,m2,z)`: GW detectability (float or array)
 
+
+
+
+
+
+
+### Credits
+
+The code is developed and maintained by [Davide Gerosa](https://github.com/dgerosa/precession/blob/master/www.davidegerosa.com). Please, report bugs to
+
+```
+dgerosa@caltech.edu
+
+```
+
+I am happy to help you out!
