@@ -81,7 +81,7 @@ p = detectability('directory'=os.path.dirname(__file__), binfile=None, binfilepd
 det = p(m1,m2,z)
 ```
 
-**Parameters:**
+##### Parameters:
 
 - `directory`: where checkpoints are stored (default is the module location)
 - `binfile`: checkpoint file (if None computed from other kwargs)
@@ -102,7 +102,7 @@ det = p(m1,m2,z)
 - `m2`: component mass in Msun (can be float or array)
 - `z`: redshift (can be float or array)
 
-**Returns:**
+##### Returns:
 
 - `det`: GW detectability (float or array)
 
