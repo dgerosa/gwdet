@@ -1,9 +1,9 @@
 # gwdet
-#### Detectability of gravitational-wave signals from compact binary coalescences
+## Detectability of gravitational-wave signals from compact binary coalescences
 
 This is a short python module to compute the detectability of gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
 
-### Installation and checkpoints
+## Installation and checkpoints
 
 You can install this using pip
 
@@ -30,11 +30,11 @@ python
 
 
 
-### Usage
+## Usage
 
 This code has two classes only, `averageangles` and `detectability`. You need to first create an instance of each class and then use it.
 
-#### averageangles
+### averageangles
 
 Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016:
 
@@ -44,15 +44,19 @@ p=averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1
 p(w) # with 0<=w<=1
 ```
 
-**Parameters**:
+##### **Parameters**:
 
-- `directory`: where checkpoints are stored
+- ##### `directory`: where checkpoints are stored
+
 - `binfile`: checkpoint file (if `None` computed from other kwargs)
+
 - `mcn`: resolution parameter (number of Monte Carlo samples)
+
 - `mcbins`: resolution parameter (number of interpolated bins)
+
 - ` w`: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
 
-**Returns**:
+##### **Returns**:
 
 - `p(w)`: GW detectability (float or array)
 
