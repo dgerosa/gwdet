@@ -109,7 +109,7 @@ det = p(m1,m2,z)
 
 ## Credits
 
-The code is developed and maintained by [Davide Gerosa](www.davidegerosa.com). Please, report bugs to
+The code is developed and maintained by [Davide Gerosa](https://davidegerosa.com/). Please, report bugs to
 
 ```
 dgerosa@caltech.edu
