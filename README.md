@@ -35,9 +35,7 @@ If you limit yourself to the default values, I provide some checkpoints files wh
     curl ....
 ```
 
-To download the checkpoints, just execute that whole command starting with `curl`.  There are two checkpoint files of ~5MB and ~200MB. Note that these files *will not be removed*  if you uninstall the module via `pip uninstall` , you will need to remove them manually.
-
-
+To download the checkpoints, just execute that whole command starting with `curl`.  There are two checkpoint files of ~5MB and ~200MB. Note that these files *will not be removed*  if you uninstall the module via `pip uninstall` , you will need to remove them manually. If you install `gwdet` in a virtual environment, these checkpoint files will live in the environment directory and will be removed when/if you delete the environment.
 
 
 
