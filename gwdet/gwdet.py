@@ -150,7 +150,7 @@ class averageangles(object):
 
                 if self.is_default:
                     print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:\n')
-                    print('curl https://raw.githubusercontent.com/dgerosa/dgerosa/master/checkpoints/'+self.binfileonly+'.tar.gz -o '+self.binfile+'.tar.gz; tar -xzvf '+self.binfile+'.tar.gz -C '+self.directory+'; rm '+self.binfile+'.tar.gz \n')
+                    print('curl https://raw.githubusercontent.com/dgerosa/gwdet/master/checkpoints/'+self.binfileonly+'.tar.gz -o '+self.binfile+'.tar.gz; tar -xzvf '+self.binfile+'.tar.gz -C '+self.directory+'; rm '+self.binfile+'.tar.gz \n')
 
                 print('['+this_module+'] Storing: '+self.binfile)
 
@@ -438,7 +438,7 @@ class detectability(object):
 
                 if self.is_default:
                     print('\n['+this_module+'] You are using defaults values. You can download this interpolant. Use:\n')
-                    print('curl https://raw.githubusercontent.com/dgerosa/dgerosa/master/checkpoints/'+self.binfileonly+'.tar.gz -o '+self.binfile+'.tar.gz; tar -xzvf '+self.binfile+'.tar.gz -C '+self.directory+'; rm '+self.binfile+'.tar.gz \n')
+                    print('curl https://raw.githubusercontent.com/dgerosa/gwdet/master/checkpoints/'+self.binfileonly+'.tar.gz -o '+self.binfile+'.tar.gz; tar -xzvf '+self.binfile+'.tar.gz -C '+self.directory+'; rm '+self.binfile+'.tar.gz \n')
 
                 assert self.has_pycbc, "pycbc is needed"
 
