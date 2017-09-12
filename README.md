@@ -10,7 +10,7 @@ Right now this code can only handle non-spinning systems. I will generalize it t
 
 ### Cite me...
 
-If you use this software in a scientific publication, I kindly ask you to cite its DOI: `[![DOI](https://zenodo.org/badge/103295136.svg)](https://zenodo.org/badge/latestdoi/103295136)`
+If you use this software in a scientific publication, I kindly ask you to cite its DOI:   [![DOI](https://zenodo.org/badge/103295136.svg)](https://zenodo.org/badge/latestdoi/103295136)
 
 This code is developed and maintained by [Davide Gerosa](https://davidegerosa.com/). To report bugs, please open an issue on GitHub. If you want to contact me, it's `dgerosa@caltech.edu`.
 
