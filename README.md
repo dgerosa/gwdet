@@ -12,9 +12,9 @@ Right now this code can only handle non-spinning systems. I will generalize it t
 
 You can install this module using pip
 
-~~~bash
+```
 pip install gwdet
-~~~
+```
 
 Dependancies include `numpy`, `scipy`,`matplotlib`,`astropy`,`requests` and `pathos`, which will be installed automatically if not present. The LIGO software `lal` and `pycbc` are needed to use this code with values other than the default ones (see [here](https://davidegerosa.com/installlal/) for a short guide I wrote). 
 
