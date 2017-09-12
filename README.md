@@ -2,11 +2,17 @@
 
 This is a short python module to compute the probability of detecting a gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
 
-The detectability function is defined by Finn and Chernoff in [arxiv:9301003](https://arxiv.org/abs/gr-qc/9301003) as a function of the projection parameter *Theta* (their Eq. 3.31). Here however, we follow the notation of Dominik+ in [arxiv:1405.7016](https://arxiv.org/abs/1405.7016), which defined *w= Theta/4* such that *0<=w<=1*. We are interested in the cumulative distribution *P(>w)* of the projection parameter *w* (see their Eq. A.1). This gives the probabilty that an elliptically polarized gravitational-wave signal (like that of a binary) will be detected taking into account the antenna pattern of the detector and the inclination of the source (here we consider a single detector,  even if in the real world we deal with networks...)
+The detectability function is defined by Finn and Chernoff in [arxiv:9301003](https://arxiv.org/abs/gr-qc/9301003) as a function of the projection parameter *Theta* (their Eq. 3.31). Here however, we follow the notation of Dominik+ in [arxiv:1405.7016](https://arxiv.org/abs/1405.7016), which defined *w= Theta/4* such that *0<=w<=1*. We are interested in the cumulative distribution *P(>w)* of the projection parameter *w* (see their Eq. A.1). This gives the probabilty that an elliptically polarized gravitational-wave signal (like that of a binary) will be detected taking into account the antenna pattern of the detector and the inclination of the source (here we consider a single detector, even if in the real world we deal with networks…).
 
 For a given (non-spinning) compact binary with masses m1 and m2 at redshift z, you first need to compute its signal-to-noise ratio *snr_opt* assuming optimal orientation and location  (i.e. the source is face on, overhead the detector). Then specify a threshold, say 8, above which you consider the signal detectable. The probabilty that a specific binary will be detected is just *P(w=8/snr_opt)*.
 
 Right now this code can only handle non-spinning systems. I will generalize it to spinning sources, eventually (any help is very welcome! Send a me a pull request). It's python 2 only for now, sorry...
+
+#### Cite me...
+
+If you use this software in a scientific publication, I kindly ask you to cite its DOI:
+
+
 
 ## Installation and checkpoints
 
@@ -26,6 +32,8 @@ If you limit yourself to the default values, I provide some checkpoints files wh
 ```
 
 To download the checkpoints, just execute that whole command starting with `curl`.  There are two checkpoint files of ~1MB and ~50MB. 
+
+
 
 
 
@@ -63,7 +71,7 @@ det = p(w) # with 0<=w<=1
 - `binfile`: checkpoint file (if `None` computed from other kwargs)
 - mcn`: resolution parameter (number of Monte Carlo samples)`
 - mcbins`: resolution parameter (number of interpolated bins)`
--  w`: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
+- w`: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
 
 ##### **Returns**:
 
@@ -106,27 +114,25 @@ det = p(m1,m2,z)
 
 - `det`: GW detectability (float or array)
 
-  ​
 
-## Cheks and performance
 
-Here I first compare the performance of the P(w) interpolator implemented in `averageangles` against public data from [Emanuele Berti's website](http://www.phy.olemiss.edu/~berti/research/). The agreement is excellent and the residuals are just numerical noise. This plot can be generated with
+
+
+## Checks and performance
+
+Here I first compare the performance of the P(w) interpolator implemented in `averageangles` against public data from [Emanuele Berti's website](http://www.phy.olemiss.edu/~berti/research/). The agreement is excellent and the residuals are just numerical noise. This plot can be generated with:
 
 ```
 gwdet.compare_Pw()
 ```
 
-
-
 ![compare_pw](https://user-images.githubusercontent.com/7237041/30345791-54f23092-97bb-11e7-8327-1a6531a1437a.png)
 
-Seconly, I compare the perfomance of the P(m1,m2,z) interpolator of `detectability` against 1000 bruce force SNR computations from `lal`. Altough occasional mismathces of 3% are found, the median residuals are as small as ~1e-5. This plot can be generated with
+Seconly, I compare the perfomance of the P(m1,m2,z) interpolator of `detectability` against 1000 bruce force SNR computations from `lal`. Altough occasional mismathces of 3% are found, the median residuals are as small as ~1e-5. This plot can be generated with:
 
 ```
 gwdet.compare_Psnr()
 ```
-
-
 
 ![compare_psnr](https://user-images.githubusercontent.com/7237041/30341935-c3bd36e8-97ac-11e7-947d-ac06dae3bedb.png)
 
@@ -134,10 +140,4 @@ gwdet.compare_Psnr()
 
 ## Credits
 
-The code is developed and maintained by [Davide Gerosa](https://davidegerosa.com/). Please, report bugs to
-
-```
-dgerosa@caltech.edu
-```
-
-I am happy to help you out!
+The code is developed and maintained by [Davide Gerosa](https://davidegerosa.com/). To report bugs, please open an issue on GitHub. If you want to contact me, it's `dgerosa@caltech.edu`
