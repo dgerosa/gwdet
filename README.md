@@ -3,7 +3,7 @@
 
 This is a short python module to compute the detectability of gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
 
-#### Installation and checkpoints
+### Installation and checkpoints
 
 You can install this using pip
 
@@ -30,11 +30,66 @@ python
 
 
 
-#### Usage
+### Usage
 
-This code has two classes only, `averageangles` and `detectability`. 
+This code has two classes only, `averageangles` and `detectability`. You need to first create an instance of each class and then use it.
 
-##### Detectability as a function of the projection parameter $\omega$
+#### averageangles
+
+Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016:
+
+```
+p=averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1e5))
+
+p(w) # with 0<=w<=1
+```
+
+**Parameters**:
+
+- `directory`: where checkpoints are stored
+- `binfile`: checkpoint file (if `None` computed from other kwargs)
+- `mcn`: resolution parameter (number of Monte Carlo samples)
+- `mcbins`: resolution parameter (number of interpolated bins)
+- ` w`: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
+
+**Returns**:
+
+- `p(w)`: GW detectability (float or array)
 
 
+
+### detectability
+
+​    Compute the detection probability of a non-spinning compact binary. We follow the notation of arxiv:1405.7016.
+
+```
+p=detectability('directory'='gwdet_data', binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
+
+p(m1,m2,m2)
+```
+
+**Parameters:**
+
+- `directory`: where checkpoints are stored
+- `binfile`: checkpoint file (if None computed from other kwargs)
+- `binfilepdet`: checkpoint file (if None computed from other kwargs)
+- `approximant`: waveform appriximant used to compute SNRs. Available list: `pycbc.waveform.waveform.print_fd_approximants()```
+- ```psd`: power spectral density used to compute SNRs. Available list: `pycbc.psd.analytical.get_lalsim_psd_list()`
+- flow`: starting freqiency in SNR calculations`
+- deltaf`: resolution parameter (frequency sampling)`
+- snrthreshold`: minimum detectable signal`
+- `massmin`,`massax`: limits on the component masses in Msun. Interpolated inside, extrapolated outside
+- `zmin`,`zmax`: limits on the redshift. Interpolated inside, extrapolated outside
+- `mc1d`: resolution parameter (number of grid point per dimension)
+- `mcn`: resolution parameter (number of Monte Carlo samples)
+- `mcbins`: resolution parameter (number of interpolated bins)
+- `parallel`: use parallel runs on all CPUs available
+- `screen`: debug option, prints all SNRs computed
+- `m1`: component mass in Msun (can be float or array)
+- `m2`: component mass in Msun (can be float or array)
+- `z`: redshift (can be float or array)
+
+**Returns:**
+
+- `p(m1,m2,z)`: GW detectability (float or array)
 
