@@ -106,7 +106,7 @@ det = p(m1,m2,z)
 
 
 
-
+![compare_pw](https://user-images.githubusercontent.com/7237041/30336315-ad8243a4-9799-11e7-9f1e-2c603b86dd80.png)
 
 
 ### Credits
