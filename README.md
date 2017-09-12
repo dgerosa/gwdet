@@ -12,6 +12,8 @@ Right now this code can only handle non-spinning systems. I will generalize it t
 
 If you use this software in a scientific publication, I kindly ask you to cite its DOI:
 
+The code is developed and maintained by [Davide Gerosa](https://davidegerosa.com/). To report bugs, please open an issue on GitHub. If you want to contact me, it's `dgerosa@caltech.edu`.
+
 
 
 ## Installation and checkpoints
@@ -137,7 +139,3 @@ gwdet.compare_Psnr()
 ![compare_psnr](https://user-images.githubusercontent.com/7237041/30341935-c3bd36e8-97ac-11e7-947d-ac06dae3bedb.png)
 
 
-
-## Credits
-
-The code is developed and maintained by [Davide Gerosa](https://davidegerosa.com/). To report bugs, please open an issue on GitHub. If you want to contact me, it's `dgerosa@caltech.edu`
