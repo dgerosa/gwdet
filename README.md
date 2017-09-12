@@ -107,7 +107,7 @@ det = p(m1,m2,z)
 ![compare_pw](https://user-images.githubusercontent.com/7237041/30337388-fbd830f6-979c-11e7-9c20-9fde063c9f5e.png)
 
 
-### Credits
+## Credits
 
 The code is developed and maintained by [Davide Gerosa](https://github.com/dgerosa/precession/blob/master/www.davidegerosa.com). Please, report bugs to
 
