@@ -1,18 +1,16 @@
 # gwdet: Detectability of gravitational-wave signals from compact binary coalescences
 
-This is a short python module to compute the detectability of gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
+This is a short python module to compute the probability of detecting a gravitational-wave signal from compact binaries averaging over sky-location and source inclination.
 
-Right now, it can only handle non-spinning systems, will be generalized to spins eventually (any help is welcome!).
+The detectability function is defined by Finn and Chernoff in [arxiv:9301003](https://arxiv.org/abs/gr-qc/9301003) as a function of the projection parameter *Theta* (their Eq. 3.31). Here however, we follow the notation of Dominik+ in [arxiv:1405.7016](https://arxiv.org/abs/1405.7016), which defined *w= Theta/4* such that *0<=w<=1*. We are interested in the cumilative distribution *P(>w)* of the projection parameter *w* (see their Eq. A.1). This gives the probabilty that an elliptically polarized gravitational-wave signal (like that of a binary) will be detected taking into account the antenna pattern of the detector and the inclination of the source (here we consider a single detector,  even if in the real world we deal with networks...)
 
-The detectability function is defined by Finn and Chernoff in [arxiv:9301003](https://arxiv.org/abs/gr-qc/9301003) as a function of the projection parameter *Theta* (their Eq. 3.31). Here however, we follow the notation of Dominik+ i n [arxiv:1405.7016](https://arxiv.org/abs/1405.7016), which used the projection parameter *w= Theta/4* (such that *0<=w<=1*). The detectability function is the cumilative distribution *P(>w)* of the projection parameter *w* (see their Eq. A.). Basically this gives the probabilty that an elliptically polarized gravitational-wave signal (like that of a binary) will be detected taking into account the antenna pattern of the detector and the inclination of the source. Here we consider a single detector, but note that in the real world we deal with networks. 
+For a given (non-spinning) compact binary with masses m1 and m2 at redshift z, you first need to compute its signal-to-noise ratio *snr_opt* assuming optimal orientation and location  (i.e. the source is face on, overhead the detector). Then specify a threshold, say 8, above which you consider the signal detectable. The probabilty that a specific binary will be detected is just *P(w=8/snr_opt)*.
 
-If you have a (non-spinning) binary with masses m1 and m2 at redshift z, you first need to compute its signal-to-noise ratio assuming optimal orientation and location *snr_opt* (i.e. the source is face-on, overhead the detector). Then, specify a threshold, say 8, above which you consider the signal detectable. The probabilty that a specific binary will be detected is just *P(w=8/snr_opt)*.
-
-
+Right now this code can only handle non-spinning systems. I will generalize it to spinning sources, eventually (any help is very welcome! Send a me a pull request). It's python 2 only for now, sorry...
 
 ## Installation and checkpoints
 
-You can install this using pip
+You can install this module using pip
 
 ~~~bash
 pip install gwdet
@@ -27,35 +25,45 @@ If you limit yourself to the default values, I provide some checkpoints files wh
     curl ....
 ```
 
-To download the checkpoints, just execute that whole command starting with `curl`.  The two checkpoint files are currently ~1MB and ~50MB respectively. 
+To download the checkpoints, just execute that whole command starting with `curl`.  There are two checkpoint files of ~1MB and ~50MB. 
 
 
 
 ## Usage
 
-This code has two classes only, `averageangles` and `detectability`. You need to first create an instance of each class and then use it.
+This code has two classes only, `averageangles` and `detectability`. You first need to create an instance of each class and then use them.
+
+The default usage is
+
+```p = 
+p=gwdet.averageangles()
+w=0.5 # Projection parameter
+print(p(w)) # Fraction of detectabile sources
+
+p=gwdet.detectability(m1,m2,z)
+m1=10. # Component mass in Msun
+m2=10. # Component mass in Msun
+z=0.1  # Redshift
+print(p(m1,m2,z))  # Fraction of detectabile sources
+```
 
 ### averageangles
 
 Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. 
 
 ```
-p = averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1e5))
+p = averageangles(directory=os.path.dirname(__file__), binfile=None, mcn=int(1e8), mcbins=int(1e5))
 
 det = p(w) # with 0<=w<=1
 ```
 
 ##### **Parameters**:
 
-- ##### `directory`: where checkpoints are stored
-
+- `directory`: where checkpoints are stored (default is the module location)
 - `binfile`: checkpoint file (if `None` computed from other kwargs)
-
-- `mcn`: resolution parameter (number of Monte Carlo samples)
-
-- `mcbins`: resolution parameter (number of interpolated bins)
-
-- ` w`: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
+- mcn`: resolution parameter (number of Monte Carlo samples)`
+- mcbins`: resolution parameter (number of interpolated bins)`
+-  w`: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
 
 ##### **Returns**:
 
@@ -68,14 +76,14 @@ det = p(w) # with 0<=w<=1
 ​    Compute the detection probability of a non-spinning compact binary.
 
 ```
-p = detectability('directory'='gwdet_data', binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
+p = detectability('directory'=os.path.dirname(__file__), binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
 
 det = p(m1,m2,z)
 ```
 
 **Parameters:**
 
-- `directory`: where checkpoints are stored
+- `directory`: where checkpoints are stored (default is the module location)
 - `binfile`: checkpoint file (if None computed from other kwargs)
 - `binfilepdet`: checkpoint file (if None computed from other kwargs)
 - `approximant`: waveform appriximant used to compute SNRs. Available list: `pycbc.waveform.waveform.print_fd_approximants()`
@@ -88,7 +96,7 @@ det = p(m1,m2,z)
 - `mc1d`: resolution parameter (number of grid point per dimension)
 - `mcn`: resolution parameter (number of Monte Carlo samples)
 - `mcbins`: resolution parameter (number of interpolated bins)
-- `parallel`: use parallel runs on all CPUs available
+- `parallel`: use parallel jobs on all CPUs available
 - `screen`: debug option, prints all SNRs computed
 - `m1`: component mass in Msun (can be float or array)
 - `m2`: component mass in Msun (can be float or array)
@@ -97,6 +105,8 @@ det = p(m1,m2,z)
 **Returns:**
 
 - `det`: GW detectability (float or array)
+
+  ​
 
 ## Cheks and performance
 

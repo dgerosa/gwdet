@@ -1,6 +1,6 @@
 '''
 gwdet: detectability of gravitational-wave signals from compact binary coalescences
-PUT GITHUB LINK HERE!
+https://github.com/dgerosa/gwdet
 '''
 
 from __future__ import print_function,division
@@ -84,7 +84,7 @@ class averageangles(object):
     Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. This is defined in arxiv:9301003, but here we follow the notation of arxiv:1405.7016
 
     Usage:
-        p = averageangles(directory='gwdet_data', binfile=None, mcn=int(1e8), mcbins=int(1e5))
+        p = averageangles(directory=os.path.dirname(__file__), binfile=None, mcn=int(1e8), mcbins=int(1e5))
         det = p(w) # with 0<=w<=1
 
     Parameters:
@@ -119,10 +119,6 @@ class averageangles(object):
 
         # True if all values are the default ones
         self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['mcn','mcbins']])
-
-        if self.is_default:
-            self.default_id = '0B79Q_824AhxsUGlEYkRKZmJOczg'
-            # https://drive.google.com/file/d/0B79Q_824AhxsUGlEYkRKZmJOczg/view?usp=sharing
 
     def montecarlo_samples(self,mcn):
         ''' Sample the w parameters over the various angles'''
@@ -193,7 +189,7 @@ class detectability(object):
     Compute the detection probability of a non-spinning compact binary. We follow the notation of arxiv:1405.7016.
 
     Usage:
-        p = detectability('directory'='gwdet_data', binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
+        p = detectability('directory'=os.path.dirname(__file__), binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', 'flow'=10., 'deltaf'=1./40., 'snrthreshold'=8., 'massmin'=1., 'massmax'=100., 'zmin'=1e-4, 'zmax'=2.2, 'mc1d'=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
         det = p(m1,m2,z)
 
     Parameters:
