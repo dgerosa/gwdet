@@ -73,10 +73,10 @@ p(m1,m2,m2)
 - `directory`: where checkpoints are stored
 - `binfile`: checkpoint file (if None computed from other kwargs)
 - `binfilepdet`: checkpoint file (if None computed from other kwargs)
-- `approximant`: waveform appriximant used to compute SNRs. Available list: `pycbc.waveform.waveform.print_fd_approximants()```
-- ```psd`: power spectral density used to compute SNRs. Available list: `pycbc.psd.analytical.get_lalsim_psd_list()`
-- flow`: starting freqiency in SNR calculations`
-- deltaf`: resolution parameter (frequency sampling)`
+- `approximant`: waveform appriximant used to compute SNRs. Available list: `pycbc.waveform.waveform.print_fd_approximants()`
+- `psd`: power spectral density used to compute SNRs. Available list: `pycbc.psd.analytical.get_lalsim_psd_list()`
+- `flow`: starting freqiency in SNR calculations
+- `deltaf`: resolution parameter (frequency sampling)
 - `snrthreshold`: minimum detectable signal
 - `massmin`,`massax`: limits on the component masses in Msun. Interpolated inside, extrapolated outside
 - `zmin`,`zmax`: limits on the redshift. Interpolated inside, extrapolated outside
