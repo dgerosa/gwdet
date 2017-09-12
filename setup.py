@@ -1,12 +1,3 @@
-'''
-Standard setup.py to upload the code on pypi.
-First, remember to do
-    bash generate_documentation.sh -all
-to be sure docstrings and readme are up-to-date. Then
-    python setup.py sdist
-    python setup.py sdist upload
-'''
-
 from setuptools import setup
 
 # Extract version
