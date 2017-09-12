@@ -7,14 +7,7 @@ to be sure docstrings and readme are up-to-date. Then
     python setup.py sdist upload
 '''
 
-import os
 from setuptools import setup
-
-# Long description from readme
-def readme():
-    os.system('pandoc --from=markdown --to=rst --output=README.rst README.md') # Convert md to rst
-    with open('README.rst') as f:
-        return f.read()
 
 # Extract version
 def get_version():
@@ -27,7 +20,7 @@ setup(
     name='gwdet',
     version=get_version(),
     description='Detectability of gravitational-wave signals from compact binary coalescences',
-    long_description=readme(),
+    long_description="See: `github.com/dgerosa/gwdet <https://github.com/dgerosa/gwdet>`_." ,
     classifiers=[
         'Topic :: Scientific/Engineering :: Astronomy',
         'Topic :: Scientific/Engineering :: Physics',
@@ -42,7 +35,7 @@ setup(
     author_email='dgerosa@caltech.edu',
     license='MIT',
     packages=['gwdet'],
-    install_requires=['numpy','scipy','scipy','matplotlib','astropy','pathos'],
+    install_requires=['numpy','scipy','scipy','matplotlib','astropy','pathos','requests'],
     include_package_data=True,
     zip_safe=False,
 )
