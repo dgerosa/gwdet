@@ -18,18 +18,18 @@ Dependancies include `numpy`, `scipy`,`matplotlib`,`astropy`,`requests` and `pat
 
 If you limit yourself to the default values, I provide some checkpoints files which let you use the code without installing any LIGO software. In any case, even if you have `lal`, dowloading these checkpoints will save you a lot of computational time. When you use the code with defaults parameters for the first time, a message like the following will be printed out:
 
-~~~bash
+```
 [gwdet] You are using defaults values. You can download this interpolant. Use:
     gwdet.download_defaults(.....)
-~~~
+```
 
 To download the checkpoints, just execute that line in a python interpreter:
 
-~~~~bash
+```
 python
 >>>> import gwdet
 >>>> gwdet.download_defaults(.....)
-~~~~
+```
 
 The two checkpoint files are currently ~5MB and ~200MB respectively.
 
@@ -102,11 +102,9 @@ det = p(m1,m2,z)
 
 - `det`: GW detectability (float or array)
 
+## Cheks and performance
 
-
-
-![compare_pw](https://user-images.githubusercontent.com/7237041/30336315-ad8243a4-9799-11e7-9f1e-2c603b86dd80.png)
-
+![compare_pw](https://user-images.githubusercontent.com/7237041/30337388-fbd830f6-979c-11e7-9c20-9fde063c9f5e.png)
 
 
 ### Credits
