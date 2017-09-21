@@ -50,7 +50,7 @@ p=gwdet.averageangles()
 w=0.5 # Projection parameter
 print(p(w)) # Fraction of detectabile sources
 
-p=gwdet.detectability(m1,m2,z)
+p=gwdet.detectability()
 m1=10. # Component mass in Msun
 m2=10. # Component mass in Msun
 z=0.1  # Redshift
