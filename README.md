@@ -26,7 +26,7 @@ You can install this module using pip
 pip install gwdet
 ```
 
-Dependancies include `numpy`, `scipy`,`matplotlib`,`astropy`,`requests` and `pathos`, which will be installed automatically if not present. The LIGO software `lal` and `pycbc` are needed to use this code with values other than the default ones (see [here](https://davidegerosa.com/installlal/) for a short guide I wrote). 
+Dependancies include `numpy`, `scipy`,`matplotlib`,`astropy`,`requests` and `pathos` will be installed automatically if not present. The LIGO software `lal` and `pycbc` are needed to use this code with values other than the default ones (see [here](https://davidegerosa.com/installlal/) for a short guide I wrote). 
 
 If you limit yourself to the default values, I provide some checkpoints files which let you use the code without installing any LIGO software. In any case, even if you have `lal`, dowloading these checkpoints will save you a lot of computational time. When you use the code with defaults parameters for the first time, a message like the following will be printed out:
 
