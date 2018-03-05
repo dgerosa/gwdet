@@ -74,8 +74,8 @@ det = p(w) # with 0<=w<=1
 
 - `directory`: where checkpoints are stored (default is the module location)
 - `binfile`: checkpoint file (if `None` computed from other kwargs)
-- mcn`: resolution parameter (number of Monte Carlo samples)`
-- mcbins`: resolution parameter (number of interpolated bins)`
+- `mcn`: resolution parameter (number of Monte Carlo samples)
+- `mcbins`: resolution parameter (number of interpolated bins)
 - w`: projection parameter 0<=w<=1, see arxiv:1405.7016 (can be float or array)
 
 ##### **Returns**:
