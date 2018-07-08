@@ -16,7 +16,7 @@ This code is developed and maintained by [Davide Gerosa](https://davidegerosa.co
 
 ### Results
 
-`gwdet` has been used in the following paper:
+`gwdet` has been used in the following papers:
 
  - Taylor and Gerosa. [arXiv:1806.08365](https://arxiv.org/abs/1806.08365)
 
