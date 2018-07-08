@@ -14,6 +14,11 @@ If you use this software in a scientific publication, I kindly ask you to cite i
 
 This code is developed and maintained by [Davide Gerosa](https://davidegerosa.com/). To report bugs, please open an issue on GitHub. If you want to contact me, it's `dgerosa@caltech.edu`.
 
+### Results
+
+`gwdet` has been used in the following paper:
+
+ - Taylor and Gerosa. [arXiv:1806.08365](https://arxiv.org/abs/1806.08365)
 
 
 
