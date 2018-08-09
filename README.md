@@ -18,7 +18,8 @@ This code is developed and maintained by [Davide Gerosa](https://davidegerosa.co
 
 `gwdet` has been used in the following papers:
 
- - Taylor and Gerosa. [arXiv:1806.08365](https://arxiv.org/abs/1806.08365)
+ - Taylor and Gerosa (2018) [arXiv:1808.02491](https://arxiv.org/abs/1808.02491)
+ - Gerosa et al. (2018) [arXiv:1808.02491](https://arxiv.org/abs/1808.02491)
 
 
 
