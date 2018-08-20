@@ -28,18 +28,14 @@ This code is developed and maintained by [Davide Gerosa](https://davidegerosa.co
 
 You can install this module using pip
 
-```
-pip install gwdet
-```
+    pip install gwdet
 
 Dependancies include `numpy`, `scipy`,`matplotlib`,`astropy`,`requests` and `pathos` will be installed automatically if not present. The LIGO software `lal` and `pycbc` are needed to use this code with values other than the default ones (see [here](https://davidegerosa.com/installlal/) for a short guide I wrote). 
 
 If you limit yourself to the default values, I provide some checkpoints files which let you use the code without installing any LIGO software. In any case, even if you have `lal`, dowloading these checkpoints will save you a lot of computational time. When you use the code with defaults parameters for the first time, a message like the following will be printed out:
 
-```
-[gwdet] You are using defaults values. You can download this interpolant. Use:
-    curl ....
-```
+    [gwdet] You are using defaults values. You can download this interpolant. Use:
+        curl ....
 
 To download the checkpoints, just execute that whole command starting with `curl`.  There are two checkpoint files of ~5MB and ~200MB. Note that these files *will not be removed*  if you uninstall the module via `pip uninstall` , you will need to remove them manually. If you install `gwdet` in a virtual environment, these checkpoint files will live in the environment directory and will be removed when/if you delete the environment.
 
