@@ -51,30 +51,26 @@ This code has two classes only, `averageangles` and `detectability`. You first n
 
 The default usage is
 
-```
-p=gwdet.averageangles()
-w=0.5 # Projection parameter
-print(p(w)) # Fraction of detectabile sources
+    p=gwdet.averageangles()
+    w=0.5 # Projection parameter
+    print(p(w)) # Fraction of detectabile sources
 
-p=gwdet.detectability()
-m1=10. # Component mass in Msun
-m2=10. # Component mass in Msun
-z=0.1  # Redshift
-print(p(m1,m2,z))  # Fraction of detectabile sources
-```
+    p=gwdet.detectability()
+    m1=10. # Component mass in Msun
+    m2=10. # Component mass in Msun
+    z=0.1  # Redshift
+    print(p(m1,m2,z))  # Fraction of detectabile sources
 
 ### averageangles
 
 Compute the detection probability, averaged over all angles (sky location, polarization, inclination, etc), as a function of the projection parameter w. 
 
-```
-p = averageangles(  directory=os.path.dirname(__file__), 
+    p = averageangles(  directory=os.path.dirname(__file__), 
                     binfile=None, 
                     mcn=int(1e8), 
                     mcbins=int(1e5) )
 
-det = p(w) # with 0<=w<=1
-```
+    det = p(w) # with 0<=w<=1
 
 ##### **Parameters**:
 
@@ -92,10 +88,9 @@ det = p(w) # with 0<=w<=1
 
 ### detectability
 
-​    Compute the detection probability of a non-spinning compact binary.
+Compute the detection probability of a non-spinning compact binary.
 
-```
-p = detectability(  directory=os.path.dirname(__file__), 
+    p = detectability(  directory=os.path.dirname(__file__), 
                     binfile=None, 
                     binfilepdet=None,
                     approximant='IMRPhenomD',
@@ -113,8 +108,7 @@ p = detectability(  directory=os.path.dirname(__file__),
                     parallel=True,
                     screen=False)
 
-det = p(m1,m2,z)
-```
+    det = p(m1,m2,z)
 
 ##### Parameters:
 
@@ -141,25 +135,17 @@ det = p(m1,m2,z)
 
 - `det`: GW detectability (float or array)
 
-
-
-
-
 ## Checks and performance
 
 Here I first compare the performance of the P(w) interpolator implemented in `averageangles` against public data from [Emanuele Berti's website](http://www.phy.olemiss.edu/~berti/research/). The agreement is excellent and the residuals are just numerical noise. This plot can be generated with:
 
-```
-gwdet.compare_Pw()
-```
+    gwdet.compare_Pw()
 
 ![compare_pw](https://user-images.githubusercontent.com/7237041/30345791-54f23092-97bb-11e7-8327-1a6531a1437a.png)
 
 Seconly, I compare the perfomance of the P(m1,m2,z) interpolator of `detectability` against 1000 bruce force SNR computations from `lal`. Altough occasional mismathces of 3% are found, the median residuals are as small as ~1e-5. This plot can be generated with:
 
-```
-gwdet.compare_Psnr()
-```
+    gwdet.compare_Psnr()
 
 ![compare_psnr](https://user-images.githubusercontent.com/7237041/30341935-c3bd36e8-97ac-11e7-947d-ac06dae3bedb.png)
 
