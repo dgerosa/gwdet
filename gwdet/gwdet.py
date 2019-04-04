@@ -11,7 +11,8 @@ import io
 import urllib
 import time
 import warnings
-import cPickle as pickle
+import six
+from six.moves import cPickle as pickle
 import multiprocessing
 
 import requests
@@ -106,19 +107,21 @@ class averageangles(object):
 
         self._interpolate = None
         self.mcn = mcn # Size of monte carlo sample
-        assert isinstance(self.mcn,(int,long))
+        assert isinstance(self.mcn,int)
         self.mcbins = mcbins # Number of bins before interpolating
-        assert isinstance(self.mcbins,(int,long))
-
+        assert isinstance(self.mcbins,int)
         self.directory=directory
+
         if binfile is None:
-            self.binfileonly = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
+            #self.binfileonly = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['mcn','mcbins']]) +'.pkl'
+            self.binfileonly = self.__class__.__name__+'_'+'_'.join([k+'_'+str(v) for k,v in zip(['mcn','mcbins'],[self.mcn,self.mcbins])]) +'.pkl'
+
         if self.directory=='':
             self.directory='.'
         self.binfile=self.directory+'/'+self.binfileonly
 
         # True if all values are the default ones
-        self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['mcn','mcbins']])
+        self.is_default=all( [v==defaults[k] for k,v in zip(['mcn','mcbins'],[self.mcn,self.mcbins])] )
 
     def montecarlo_samples(self,mcn):
         ''' Sample the w parameters over the various angles'''
@@ -246,11 +249,14 @@ class detectability(object):
         self.zmin=zmin
         self.zmax=zmax
         self.mc1d=mc1d # Size of grid where interpolation is performed
-        assert isinstance(self.mc1d,(int,long))
+        assert isinstance(self.mc1d,int)
 
         self.directory=directory
         if binfile is None:
-            self.binfileonly = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
+            #self.binfileonly = self.__class__.__name__+'_'+'_'.join([x+'_'+str(eval(x)) for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']]) +'.pkl'
+            self.binfileonly = self.__class__.__name__+'_'+'_'.join([k+'_'+str(v) for k,v in zip(['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d'],[self.approximant,self.psd,self.flow,self.deltaf,self.snrthreshold,self.massmin,self.massmax,self.zmin,self.zmax,self.mc1d])]) +'.pkl'
+
+
         if self.directory=='':
             self.directory='.'
         self.binfile=self.directory+'/'+self.binfileonly
@@ -276,7 +282,10 @@ class detectability(object):
         self._pdetproj = None
 
         # True if all values are the default ones
-        self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']])
+        #self.is_default=all( [eval('self.'+x)==defaults[x] for x in ['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d']])
+        self.is_default=all( [v==defaults[k] for k,v in zip(['approximant','psd','flow','deltaf','snrthreshold','massmin','massmax','zmin','zmax','mc1d'],[self.approximant,self.psd,self.flow,self.deltaf,self.snrthreshold,self.massmin,self.massmax,self.zmin,self.zmax,self.mc1d])] )
+
+
 
     def pdetproj(self):
         ''' A single instance of the pdet class'''

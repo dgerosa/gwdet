@@ -1,6 +1,10 @@
-from gwdet import *
-__author__ = gwdet.__author__
-__email__ = gwdet.__email__
-__license__ = gwdet.__license__
-__version__ = gwdet.__version__
-__doc__ = gwdet.__doc__
+from .gwdet import __author__
+from .gwdet import __email__
+from .gwdet import __license__
+from .gwdet import __version__
+from .gwdet import __doc__
+
+from .gwdet import averageangles
+from .gwdet import detectability
+from .gwdet import compare_Pw
+from .gwdet import compare_Psnr
