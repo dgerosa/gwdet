@@ -8,7 +8,7 @@ The detectability function is defined by Finn and Chernoff in [arxiv:9301003](ht
 
 For a given (non-spinning) compact binary with masses m1 and m2 at redshift z, you first need to compute its signal-to-noise ratio snr_opt assuming optimal orientation and location  (i.e. the source is face on, overhead the detector). Then specify a threshold, say 8, above which you consider the signal detectable. The probabilty that a specific binary will be detected is just P(w=8/snr_opt).
 
-Right now this code can only handle non-spinning systems. I will generalize it to spinning sources, eventually (any help is very welcome! Send a me a pull request). It's python 2 only for now, sorry...
+Right now this code can only handle non-spinning systems. I will generalize it to spinning sources, eventually (any help is very welcome! Send a me a pull request).
 
 ### Cite me...
 
