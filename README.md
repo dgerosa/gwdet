@@ -118,7 +118,7 @@ Compute the detection probability of a non-spinning compact binary.
 - `binfilepdet`: checkpoint file (if None computed from other kwargs)
 - `approximant`: waveform appriximant used to compute SNRs. Available list: `pycbc.waveform.waveform.print_fd_approximants()`
 - `psd`: power spectral density used to compute SNRs. Available list: `pycbc.psd.analytical.get_lalsim_psd_list()`
-- `psd_from_path`: load psd using `pycbc.pycbc.psd.analytical.from_string` (default False)
+- `psd_from_path`: load psd using `pycbc.psd.from_txt` (default False)
 - `psd_path`: power spectral density used to compute SNRs. Provide path to `.txt` file (default None)
 - `is_asd_file`: check whether the `txt` file contains amplitude or power spectral density (default True)
 - `flow`: starting frequency in SNR calculations

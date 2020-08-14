@@ -67,11 +67,10 @@ defaults={  'directory' : os.path.dirname(__file__),
             'mcn' : int(1e8),
             'mcbins' : int(1e5),
             'approximant' : 'IMRPhenomD',
-            'psd_from_string' : True,
             'psd' : 'aLIGOZeroDetHighPower',
             'psd_from_path': False,
             'psd_path': None,
-            'is_asd_file': False,
+            'is_asd_file': True,
             'flow' : 10.,
             'deltaf' : 1./40.,
             'snrthreshold': 8.,
@@ -209,9 +208,9 @@ class detectability(object):
         binfilepdet: checkpoint file (if None computed from other kwargs)
         approximant: waveform appriximant used to compute SNRs. Available list: pycbc.waveform.waveform.print_fd_approximants()
         psd: power spectral density used to compute SNRs. Available list: pycbc.psd.analytical.get_lalsim_psd_list()
-        psd_from_path: load psd using pycbc.pycbc.psd.analytical.from_string (default False)
+        psd_from_path: load psd using pycbc.psd.from_txt (default False)
         psd_path: power spectral density used to compute SNRs. Provide path to .txt file (default None)
-        is_asd_file: check whether the txt file contains asd or psd (default True)
+        is_asd_file: whether the txt file contains asd or psd (default True, argument for pycbc.pycbc.psd.from_txt())
         flow: starting frequency in SNR calculations
         deltaf: resolution parameter (frequency sampling)
         snrthreshold: minimum detectable signal
@@ -334,7 +333,7 @@ class detectability(object):
                                                     distance=lum_dist)
             if self.psd_from_path:
                 evaluatedpsd = pycbc.psd.from_txt(self.psd_path, len(hp), self.deltaf, self.flow, is_asd_file=self.is_asd_file)
-            else
+            else:
                 evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
             
             snr_one=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.flow)
@@ -357,8 +356,8 @@ class detectability(object):
                                                 f_lower=self.flow,
                                                 distance=1.)
         if self.psd_from_path:
-                evaluatedpsd = pycbc.psd.from_txt(self.psd_path, len(hp), self.deltaf, self.flow, is_asd_file=self.is_asd_file)
-            else
+            evaluatedpsd = pycbc.psd.from_txt(self.psd_path, len(hp), self.deltaf, self.flow, is_asd_file=self.is_asd_file)
+        else:
                 evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
         snr=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.flow)
         if self.screen==True:
