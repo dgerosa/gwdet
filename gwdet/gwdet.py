@@ -358,7 +358,7 @@ class detectability(object):
         if self.psd_from_path:
             evaluatedpsd = pycbc.psd.from_txt(self.psd_path, len(hp), self.deltaf, self.flow, is_asd_file=self.is_asd_file)
         else:
-                evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
+            evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
         snr=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.flow)
         if self.screen==True:
            print("  m1="+str(m1z)+" m1="+str(m2z)+" SNR="+str(snr))
