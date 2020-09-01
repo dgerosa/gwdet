@@ -93,6 +93,9 @@ Compute the detection probability of a non-spinning compact binary.
                     binfilepdet=None,
                     approximant='IMRPhenomD',
                     psd='aLIGOZeroDetHighPower',
+                    psd_from_path=False,
+                    psd_path=None,
+                    is_asd_file=None,
                     flow=10.,
                     deltaf=1./40.,
                     snrthreshold=8.,
@@ -115,7 +118,10 @@ Compute the detection probability of a non-spinning compact binary.
 - `binfilepdet`: checkpoint file (if None computed from other kwargs)
 - `approximant`: waveform appriximant used to compute SNRs. Available list: `pycbc.waveform.waveform.print_fd_approximants()`
 - `psd`: power spectral density used to compute SNRs. Available list: `pycbc.psd.analytical.get_lalsim_psd_list()`
-- `flow`: starting freqiency in SNR calculations
+- `psd_from_path`: load psd using `pycbc.psd.from_txt` (default False)
+- `psd_path`: power spectral density used to compute SNRs. Provide path to `.txt` file (default None)
+- `is_asd_file`: check whether the `txt` file contains amplitude or power spectral density (default True)
+- `flow`: starting frequency in SNR calculations
 - `deltaf`: resolution parameter (frequency sampling)
 - `snrthreshold`: minimum detectable signal
 - `massmin`,`massax`: limits on the component masses in Msun. Interpolated inside, extrapolated outside

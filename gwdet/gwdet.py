@@ -68,6 +68,9 @@ defaults={  'directory' : os.path.dirname(__file__),
             'mcbins' : int(1e5),
             'approximant' : 'IMRPhenomD',
             'psd' : 'aLIGOZeroDetHighPower',
+            'psd_from_path': False,
+            'psd_path': None,
+            'is_asd_file': True,
             'flow' : 10.,
             'deltaf' : 1./40.,
             'snrthreshold': 8.,
@@ -192,7 +195,11 @@ class detectability(object):
     Compute the detection probability of a non-spinning compact binary. We follow the notation of arxiv:1405.7016.
 
     Usage:
-        p = detectability(directory=os.path.dirname(__file__), binfile=None, binfilepdet=None, approximant='IMRPhenomD', psd='aLIGOZeroDetHighPower', flow=10., deltaf=1./40., snrthreshold=8., massmin=1., massmax=100., zmin=1e-4, zmax=2.2, mc1d=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
+        p = detectability(directory=os.path.dirname(__file__), binfile=None, binfilepdet=None, approximant='IMRPhenomD',
+        psd='aLIGOZeroDetHighPower', psd_from_path=False, psd_path=None, is_asd_file=None, 
+        flow=10., deltaf=1./40., snrthreshold=8., 
+        massmin=1., massmax=100., zmin=1e-4, zmax=2.2,
+        mc1d=int(200), mcn=int(1e8), mcbins=int(1e5), parallel=True, screen=False)
         det = p(m1,m2,z)
 
     Parameters:
@@ -201,7 +208,10 @@ class detectability(object):
         binfilepdet: checkpoint file (if None computed from other kwargs)
         approximant: waveform appriximant used to compute SNRs. Available list: pycbc.waveform.waveform.print_fd_approximants()
         psd: power spectral density used to compute SNRs. Available list: pycbc.psd.analytical.get_lalsim_psd_list()
-        flow: starting freqiency in SNR calculations
+        psd_from_path: load psd using pycbc.psd.from_txt (default False)
+        psd_path: power spectral density used to compute SNRs. Provide path to .txt file (default None)
+        is_asd_file: whether the txt file contains asd or psd (default True, argument for pycbc.pycbc.psd.from_txt())
+        flow: starting frequency in SNR calculations
         deltaf: resolution parameter (frequency sampling)
         snrthreshold: minimum detectable signal
         massmin,massax: limits on the component masses in Msun. Interpolated inside, extrapolated outside
@@ -221,6 +231,9 @@ class detectability(object):
 
     def __init__(self,  approximant=defaults['approximant'],
                         psd=defaults['psd'],
+                        psd_from_path=defaults['psd_from_path'],
+                        psd_path=defaults['psd_path'],
+                        is_asd_file=defaults['is_asd_file'],
                         flow=defaults['flow'],
                         deltaf=defaults['deltaf'],
                         snrthreshold=defaults['snrthreshold'],
@@ -240,7 +253,13 @@ class detectability(object):
                         ):
 
         self.approximant=approximant
-        self.psd=psd
+        self.psd_from_path=psd_from_path
+        if self.psd_from_path:
+            self.psd_path=psd_path
+            self.psd=os.path.splitext(os.path.basename(self.psd_path))[0] #Used for binfile naming
+            self.is_asd_file=is_asd_file
+        else:
+            self.psd=psd
         self.flow=flow
         self.deltaf=deltaf
         self.snrthreshold=snrthreshold
@@ -312,9 +331,14 @@ class detectability(object):
                                                     delta_f=self.deltaf,
                                                     f_lower=self.flow,
                                                     distance=lum_dist)
-            evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
+            if self.psd_from_path:
+                evaluatedpsd = pycbc.psd.from_txt(self.psd_path, len(hp), self.deltaf, self.flow, is_asd_file=self.is_asd_file)
+            else:
+                evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
+            
             snr_one=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.flow)
             snr.append(snr_one ) # use hp only because I want optimally oriented sources
+            
             if self.screen==True:
                print("  m1="+str(m1)+" m1="+str(m2)+" z="+str(z)+" SNR="+str(snr_one))
 
@@ -331,7 +355,10 @@ class detectability(object):
                                                 delta_f=self.deltaf,
                                                 f_lower=self.flow,
                                                 distance=1.)
-        evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
+        if self.psd_from_path:
+            evaluatedpsd = pycbc.psd.from_txt(self.psd_path, len(hp), self.deltaf, self.flow, is_asd_file=self.is_asd_file)
+        else:
+            evaluatedpsd = pycbc.psd.analytical.from_string(self.psd,len(hp), self.deltaf, self.flow)
         snr=pycbc.filter.sigma(hp, psd=evaluatedpsd, low_frequency_cutoff=self.flow)
         if self.screen==True:
            print("  m1="+str(m1z)+" m1="+str(m2z)+" SNR="+str(snr))
